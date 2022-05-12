@@ -1,3 +1,4 @@
+import collections
 import math
 import os
 import sys
@@ -92,6 +93,57 @@ def plot_edge_angle(all_city_stat, name, fig, subplots, subplot_idx, bins = 18):
         # plt.xticks(x_pos[::2], x_lab[::2])
         #axis.plot( x_pos, r, 'tab:orange')
 
+def node_degree(vertices, edges, table_data, table_row, table_col, maxx = 6 ):
+
+    out = np.zeros((maxx), dtype=np.int)
+
+    total = 0.
+
+    valency = {}
+
+    def add(a):
+        aa = a.tostring()
+        if aa in valency:
+            valency[aa]= valency[aa]+1
+        else:
+            valency[aa] = 1
+
+    for e in edges:
+        a = np.array(vertices[e[0]])
+        b = np.array(vertices[e[1]])
+
+        add(a)
+        add(b)
+
+    counter =collections.Counter(valency.values())
+
+    total = 0
+    for i in range (1, maxx):
+        if i in counter:
+            out[i-1] = counter[i]
+        total = total + i * counter[i]
+
+    table_data[table_row, table_col] = total / len ( vertices )
+
+    return out
+
+def plot_node_degree(all_city_stat, name, fig, subplots, subplot_idx, maxx = 6):
+
+    axs = plt.subplot(subplots, 1, subplot_idx)
+    axs.title.set_text(name)
+
+    for r in all_city_stat:
+        x_pos = list(range(maxx))
+        x_lab = list(range(1,maxx))
+
+        plt.ylabel("frequency")
+        plt.xlabel("node degree")
+
+        plt.bar(x_pos, r, color='green')
+
+        #plt.xticks(x_pos[::2], x_lab[::2])
+        # axis.plot( x_pos, r, 'tab:orange')
+
 def main():
 
     input_path = sys.argv[1]
@@ -103,7 +155,18 @@ def main():
 
     npz_file_names = [x for x in os.listdir(input_path) if x.endswith('.npz')]
 
-    metric_fns = ['edge_length', 'edge_angle']
+    metric_fns = ['edge_length', 'edge_angle', 'node_degree']
+
+    # transport ratio
+    # street length (between junctions)
+    # circuity (length of street / distance from start to end)
+    # angles between streets at junctions (?!)
+    # pagerank distribution of nodes; streets
+
+    # single figure values
+    # node count, edge count, street count, edge length
+    # street density
+    # node density
 
     all_city_stats = {}
     for m in metric_fns:
