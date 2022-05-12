@@ -38,6 +38,7 @@ def edge_length(vertices, edges, table_data, table_row, table_col, minn=0, maxx=
 def plot_edge_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=250, bins = 20):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
+    axs.title.set_text(name)
 
     for r in all_city_stat:
         x_pos = list(range(bins))
@@ -76,16 +77,18 @@ def edge_angle(vertices, edges, table_data, table_row, table_col, bins = 18 ):
 def plot_edge_angle(all_city_stat, name, fig, subplots, subplot_idx, bins = 18):
 
     axs = plt.subplot(subplots, 1, subplot_idx, polar=True)
+    axs.title.set_text(name)
 
     for r in all_city_stat:
 
         x_pos = list(range(bins * 2))
+        x_pos = list(map ( lambda x : x * np.pi / bins, x_pos) )
         #x_lab = list ( map (lambda x : " %d" % ((maxx-minn)*x/bins + minn), x_pos ) )
 
         # plt.ylabel("frequency")
         # plt.xlabel("edge length (m)")
 
-        plt.bar(x_pos, np.concatenate((r,r)), width=np.pi/bins, color='green', edgecolor="white")
+        plt.bar(x_pos, np.concatenate((r,r)), width = np.pi/bins, color='green', edgecolor="white")
         # plt.xticks(x_pos[::2], x_lab[::2])
         #axis.plot( x_pos, r, 'tab:orange')
 
