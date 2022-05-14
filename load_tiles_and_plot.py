@@ -166,6 +166,9 @@ def main():
     npz_file_names = [x for x in os.listdir(input_path) if x.endswith('.npz')]
 
     for idx, npz in enumerate(npz_file_names):
+
+        print(npz)
+
         npz_path = os.path.join(input_path, npz)
 
         np_file_content = np.load(npz_path)
@@ -192,7 +195,7 @@ def main():
         else:
             land_and_water = None
 
-        img_file_path = os.path.join(output_path, "{:03d}.png".format(idx))
+        img_file_path = os.path.join(output_path, npz+".png")
         plot(vertices, edges, land_and_water, img_file_path)
 
 if __name__ == '__main__':
@@ -202,6 +205,6 @@ if __name__ == '__main__':
     # Output Directory to save the images
     sys.argv.append(r'npz\img')
 
-    dxf_to_npz("C:\\Users\\twak\\Documents\\CityEngine\\Default Workspace\\datatest\\data\\dxf_streets_seg.dxf", 20000, "seg.npz")
+    #dxf_to_npz("C:\\Users\\twak\\Documents\\CityEngine\\Default Workspace\\datatest\\data\\dxf_streets_seg.dxf", 20000, "seg.npz")
 
-    #main()
+    main()
