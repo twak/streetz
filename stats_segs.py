@@ -138,7 +138,7 @@ def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=4
     if norm:
         out = out / float ( len (segs) )
 
-    FastPlot(2048, 2048, vertices, edges).run()
+    FastPlot(2048, 2048, vertices, edges, scale=0.1).run()
 
     return out
 

@@ -12,7 +12,7 @@ ZOOM_OUT_FACTOR = 1/ZOOM_IN_FACTOR
 
 class FastPlot(pyglet.window.Window):
 
-    def __init__(self, width, height, verts, edges, vert_cols = None, edge_cols=None, *args, **kwargs):
+    def __init__(self, width, height, verts, edges, vert_cols = None, edge_cols=None, scale = 1000, *args, **kwargs):
         conf = Config(sample_buffers=1,
                       samples=4,
                       depth_size=16,
@@ -31,6 +31,7 @@ class FastPlot(pyglet.window.Window):
         self.edges = edges
         self.vert_cols = vert_cols
         self.edge_cols = edge_cols
+        self.scale = scale
 
     def init_gl(self, width, height):
         # Set clear color
@@ -48,11 +49,10 @@ class FastPlot(pyglet.window.Window):
         # Set viewport
         glViewport( 0, 0, width, height )
 
-        scale = 1000
 
         self.vbo_points = GLuint()
         glGenBuffers(1, pointer(self.vbo_points))
-        self.points_data = self.verts.flatten() * scale
+        self.points_data = self.verts.flatten() * self.scale
         data = (GLfloat * len(self.points_data))(*self.points_data)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo_points)
         glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW)
@@ -69,7 +69,7 @@ class FastPlot(pyglet.window.Window):
 
         self.vbo_lines = GLuint()
         glGenBuffers(1, pointer(self.vbo_lines))
-        self.lines_data = self.verts[self.edges].flatten() * scale
+        self.lines_data = self.verts[self.edges].flatten() * self.scale
         data = (GLfloat * len(self.lines_data))(*self.lines_data)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo_lines)
         glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW)
