@@ -10,9 +10,9 @@ from ctypes import pointer, sizeof
 ZOOM_IN_FACTOR = 1.2
 ZOOM_OUT_FACTOR = 1/ZOOM_IN_FACTOR
 
-class FastPlot(pyglet.window.Window):
+class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/708802
 
-    def __init__(self, width, height, verts, edges, vert_cols = None, edge_cols=None, scale = 1000, *args, **kwargs):
+    def __init__(self, width, height, verts, edges, vert_cols = None, edge_cols=None,  scale = 1000, *args, **kwargs):
         conf = Config(sample_buffers=1,
                       samples=4,
                       depth_size=16,
@@ -32,6 +32,7 @@ class FastPlot(pyglet.window.Window):
         self.vert_cols = vert_cols
         self.edge_cols = edge_cols
         self.scale = scale
+        # self.init_gl(width, height)
 
     def init_gl(self, width, height):
         # Set clear color
@@ -59,7 +60,7 @@ class FastPlot(pyglet.window.Window):
 
         self.vbo_point_colors = GLuint()
         glGenBuffers(1, pointer(self.vbo_point_colors))
-        if self.vert_cols == None:
+        if self.vert_cols is None:
             self.point_color_data = (np.zeros( ( len(self.verts), 3) ) + 1).flatten()
         else:
             self.point_color_data = self.vert_cols.flatten()
@@ -77,14 +78,14 @@ class FastPlot(pyglet.window.Window):
         self.vbo_line_colors = GLuint()
         glGenBuffers(1, pointer(self.vbo_line_colors))
 
-        if self.edge_cols == None:
+        if self.edge_cols is None:
             self.line_color_data = (np.zeros( ( len(self.edges) * 2, 3) ) + 1).flatten()  # .astype( np.int )# np.dtype('B'))
         else:
             if len(self.edge_cols) == len (self.edges):
-                self.point_color_data = np.repeat ( self.edges_cols, 2 ).flatten() # repeat for start, end of line colors
+                self.line_color_data = np.repeat ( self.edge_cols, 2, axis=0 ).flatten() # repeat for start, end of line colors
             else:
-                self.point_color_data = self.edge_cols.flatten()
-        #self.line_color_data = ((np.random.rand ( len (self.edges * 2), 3 ) )).flatten() #.astype( np.int )# np.dtype('B'))
+                self.line_color_data = self.edge_cols.flatten()
+
         data = (GLfloat * len(self.line_color_data))(*self.line_color_data)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo_line_colors)
         glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW)
@@ -166,6 +167,12 @@ class FastPlot(pyglet.window.Window):
         # Remove default modelview matrix
         glPopMatrix()
 
+        # global IMG_OUT
+        # ibar = pyglet.image.get_buffer_manager().get_color_buffer().get_image_data()
+        # IMG_OUT = np.asanyarray(ibar.get_data())
+        # print("quitting")
+        # pyglet.app.exit()
+
     def run(self):
         pyglet.app.run()
 
@@ -196,10 +203,12 @@ def main():
         else:
             land_and_water = None
 
-        FastPlot(2048, 2048, vertices, edges).run()
+        FastPlot(2048, 2048, vertices, edges ).run()
+        #FastPlot(2048, 2048, vertices, edges, visible=False).run()
 
         break
 
+# IMG_OUT = None
 
 if __name__ == '__main__':
     # Input Directory holding npz files
@@ -209,3 +218,4 @@ if __name__ == '__main__':
     sys.argv.append(r'npz\img')
 
     main()
+    # print("main done" + str(IMG_OUT))

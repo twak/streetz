@@ -8,51 +8,86 @@ from fast_plot import FastPlot
 
 SEGS = None
 SEG_LENGTHS = None
+SEG_EDGES = None
+V2E = None
 
-def build_segs(vertices, edges):
+class VertexMap ():
 
-    global SEGS, SEG_LENGTHS
+    def __init__(s, vertices, edges):
+        s.v2e = {}
+        s.v = vertices
+        s.e = edges
 
-    if SEGS == None:
-
-        SEG_LENGTHS = []
-        SEGS = []
-
-        v2e = {}
         for v in vertices:
             key = v.tobytes()
-            v2e[key] = []
+            s.v2e[key] = []
 
         for e in edges:
             sk = vertices[e[0]].tobytes()
             ek = vertices[e[1]].tobytes()
 
-            v2e[sk].append( e )
-            v2e[ek].append( e )
+            s.v2e[sk].append( e )
+            s.v2e[ek].append( e )
 
-        def is_jn(v_idx):
-            return len(v2e[vertices[v_idx].tobytes()]) != 2
+    def is_jn(s,v_idx):
+        return len(s.v2e[s.v[v_idx].tobytes()]) != 2
 
-        def get_other_edge(e1_, v_idx): # get the other street of hte street from the vertex
+    def get_other_edge(s,e1_, v_idx):  # get the other street of hte street from the vertex
 
-            e1 = np.array(e1_)
-            for e2 in v2e[ vertices[v_idx].tobytes()]:
-                if not np.array_equal ( e2, e1):
-                    return e2
+        e1 = np.array(e1_)
+        for e2 in s.v2e[s.v[v_idx].tobytes()]:
+            if not np.array_equal(e2, e1):
+                return e2
 
-            raise RuntimeError("get other edge %d %s" % (e1, v_idx))
+        raise RuntimeError("get other edge %d %s" % (e1, v_idx))
 
+    def get_other_vert_idx(s,e, v_idx):  #
 
-        def get_other_vert_idx(e, v_idx): #
+        if e[0] == v_idx:
+            return e[1]
+        elif e[1] == v_idx:
+            return e[0]
+        else:
+            raise RuntimeError("get other vert %d %s" % (e, v_idx))
 
-            if e[0] == v_idx:
-                return e[1]
-            elif e[1] == v_idx:
-                return e[0]
+    def get_other_pts(s, next_v):
+
+        out = []
+        for e in s.v2e[ s.v[next_v].tobytes() ]:
+
+            if e[0] == next_v:
+                out.append(e[1])
+            elif e[1] == next_v:
+                out.append(e[0])
             else:
-                raise RuntimeError("get other vert %d %s" % (e, v_idx))
+                raise RuntimeError("lookup failure")
+
+        return out
+
+def build_V2E(v, e):
+
+    global V2E
+    if V2E is None:
+        V2E = VertexMap (v, e)
+
+    return V2E
+
+def build_segs(vertices, edges):
+
+    global SEGS, SEG_LENGTHS, SEG_EDGES
+
+    if SEGS == None:
+
+        SEG_LENGTHS = [] # per segment lengths
+        SEGS = [] # list of vertex indicies for per segment
+        SEG_EDGES = [] # list of unordered edge indicies per segment
+
+        v2e = build_V2E(vertices, edges)
 
         remaining = {tuple(row) for row in edges}
+        lookup = {}
+        for e_idx, e in enumerate ( edges ):
+            lookup[tuple(e)] = e_idx
 
         while len(remaining) > 0:
 
@@ -63,13 +98,16 @@ def build_segs(vertices, edges):
             S = [start[0], start[1]]
             SEGS.append(S)
 
+            E = [lookup [start]]
+            SEG_EDGES.append( E )
+
             for idx, pt_idx in enumerate(start): # look forwards and backwards
 
                 next = start
 
-                while not is_jn(pt_idx): # keep going until we hit a junction
+                while not v2e.is_jn(pt_idx): # keep going until we hit a junction
 
-                    next = get_other_edge(next, pt_idx)
+                    next = v2e.get_other_edge(next, pt_idx)
 
                     if tuple ( next ) not in remaining: # loop!
                         break
@@ -77,7 +115,9 @@ def build_segs(vertices, edges):
                     remaining.remove(tuple ( next ))
                     seg_len = seg_len + l2(next, vertices)
 
-                    pt_idx = get_other_vert_idx(next, pt_idx)
+                    pt_idx = v2e.get_other_vert_idx(next, pt_idx)
+
+                    E.append(lookup [tuple(next)])
 
                     if idx == 0:
                         S.insert(0, pt_idx)
@@ -96,10 +136,20 @@ def get_seg_lengths():
 
     return SEG_LENGTHS
 
+def get_seg_by_edge():
+    global SEG_EDGES
+
+    if SEG_EDGES is None:
+        raise RuntimeError("call build segments first!")
+
+    return SEG_EDGES
+
 def reset_seg_cache():
-    global SEGS, SEG_LENGTHS
+    global SEGS, SEG_LENGTHS, SEG_EDGES,V2E
     SEGS = None
     SEG_LENGTHS = None
+    SEG_EDGES = None
+    V2E = None
 
 def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=400, bins = 32, norm = True ):
 
@@ -110,14 +160,18 @@ def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=4
 
     total = 0.
 
+    edge_cols = np.zeros((len(edges),3))
+
+    for e_list in get_seg_by_edge():
+
+        rgb = np.random.rand(3)
+
+        for e in e_list:
+            edge_cols[e] = rgb
+
     for s_idx, s in enumerate ( segs ):
 
         length = sl[s_idx]
-        # for i in range(len ( s)-1):
-        #     a = np.array(vertices[s[i]])
-        #     b = np.array(vertices[s[i+1]])
-        #     l = np.linalg.norm(a - b)
-        #     length = length + l
         total = total + length
 
         length = max (minn, min(maxx, length), length)
@@ -138,7 +192,7 @@ def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=4
     if norm:
         out = out / float ( len (segs) )
 
-    FastPlot(2048, 2048, vertices, edges, scale=0.1).run()
+    # FastPlot(2048, 2048, vertices, edges, scale=0.1, edge_cols = np.array(edge_cols) ).run()
 
     return out
 
@@ -218,7 +272,6 @@ def plot_segment_circuity(all_city_stat, name, fig, subplots, subplot_idx,  minn
         plt.xlabel("Segment circuity ratio")
 
         plt.bar(x_pos + idx* (1/float(len (all_city_stat))), r,1. / len (all_city_stat), color=COLORS[idx] )
-
 
         x_pos = x_pos[::5]
         x_lab = x_lab[::5]

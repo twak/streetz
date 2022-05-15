@@ -1,6 +1,7 @@
 
 
 from stats_segs import *
+from stats_blocks import *
 
 import collections
 import math
@@ -220,9 +221,11 @@ def main():
 
     npz_file_names = [x for x in os.listdir(input_path) if x.endswith('.npz')]
 
-    metric_fns = [ 'edge_count', 'vertex_count',
+    metric_fns = [
+                   'edge_count', 'vertex_count',
                    'edge_length', 'segment_length', 'edge_angle', 'node_degree',
-                   'segment_circuity'
+                   'segment_circuity',
+                   'block_perimeter', 'block_area'
                    ]
 
     all_city_stats = {}
@@ -237,6 +240,7 @@ def main():
     for idx, npz in enumerate(npz_file_names):
 
         reset_seg_cache()
+        reset_block_cache()
 
         npz_path = os.path.join(input_path, npz)
         np_file_content = np.load(npz_path)
