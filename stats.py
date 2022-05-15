@@ -222,10 +222,11 @@ def main():
     npz_file_names = [x for x in os.listdir(input_path) if x.endswith('.npz')]
 
     metric_fns = [
-                   'edge_count', 'vertex_count',
-                   'edge_length', 'segment_length', 'edge_angle', 'node_degree',
-                   'segment_circuity',
-                   'block_perimeter', 'block_area'
+                   # 'edge_count', 'vertex_count',
+                   # 'edge_length', 'segment_length', 'edge_angle', 'node_degree',
+                   # 'segment_circuity',
+                   'block_perimeter', 'block_area',
+                   'block_aspect'
                    ]
 
     all_city_stats = {}

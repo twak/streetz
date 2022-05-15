@@ -8,6 +8,8 @@ from utils import angle, COLORS
 
 from fast_plot import FastPlot
 
+from scipy.spatial import ConvexHull
+
 from stats_segs import VertexMap, V2E, build_V2E
 
 BLOCKS = None
@@ -151,14 +153,14 @@ def block_perimeter( vertices, edges, table_data, table_row_names, minn=0, maxx=
 def plot_block_perimeter (all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=2000, bins = 64):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
-    axs.title.set_text("Block Perimeter (< 2000m)")
+    axs.title.set_text("Block Perimeter (< 2,000m)")
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)
         x_lab = list ( map (lambda x : " %d" % ((maxx-minn)*x/bins + minn), x_pos ) )
 
         plt.ylabel("Proportion")
-        plt.xlabel("Segment length (m)")
+        plt.xlabel("Block perimeter length (m)")
 
         plt.bar(x_pos + idx* (1/float(len (all_city_stat)+1)), r,1. / (len (all_city_stat)+1), color=COLORS[idx] )
 
@@ -214,7 +216,7 @@ def plot_block_area (all_city_stat, name, fig, subplots, subplot_idx, minn=0, ma
         x_lab = list ( map (lambda x : " %d" % ((maxx-minn)*x/bins + minn), x_pos ) )
 
         plt.ylabel("Proportion")
-        plt.xlabel("Segment length (m)")
+        plt.xlabel("Block area (m^2)")
 
         plt.bar(x_pos + idx* (1/float(len (all_city_stat)+1)), r,1. / (len (all_city_stat)+1), color=COLORS[idx] )
 
@@ -223,5 +225,80 @@ def plot_block_area (all_city_stat, name, fig, subplots, subplot_idx, minn=0, ma
 
         # x_lab[len(x_lab)-1] = "> %d" % maxx
         # x_pos[len(x_pos)-1] = bins -1
+
+        plt.xticks(x_pos, x_lab)
+
+def block_aspect ( vertices, edges, table_data, table_row_names, minn=0.1, maxx=1.9, bins = 32, norm = True ):
+
+    out = np.zeros((bins), dtype=np.int)
+
+    blocks = build_blocks(vertices, edges)
+    areas = get_block_areas()
+
+    total = 0
+    total_rectness = 0
+
+
+    for b_idx, pts in enumerate ( blocks ):
+
+        area = areas[b_idx]
+
+        length = 0
+
+        locs = np.zeros((len(pts), 2))
+        for idx in range(len ( pts ) ):
+            locs[idx] = vertices[pts[idx]]
+
+        hull = ConvexHull(locs)
+
+        best = 1e10
+        for simplex in hull.simplices:
+
+            h, w = bb( locs, locs[simplex, 0], locs[simplex, 1] )
+
+            if (h * w) < best:
+                best = h *w
+                aspect = h/w
+
+        idx = floor(aspect * bins / (maxx - minn))
+        idx = min(idx, bins - 1)
+        out[idx] += 1
+
+        total += aspect
+
+        rectness = area / h * w
+        total_rectness += rectness
+
+    table_row_names.append("Mean block aspect ratio")
+    table_row_names.append("Mean block rectangularness ratio")
+
+    if len (blocks) > 0:
+        table_data.append("%.2f" % (total / float(len(blocks))))
+        table_data.append("%.2f" % (total_rectness / float(len(blocks))))
+    else:
+        table_data.append("-")
+        table_data.append("-")
+
+    if norm:
+        out = out / float ( len (blocks) )
+
+    return out
+
+def plot_block_aspect (all_city_stat, name, fig, subplots, subplot_idx,minn=0.1, maxx=1.9, bins = 32):
+
+    axs = plt.subplot(subplots, 1, subplot_idx)
+    axs.title.set_text("Block Bounding Box Aspect Ratio")
+
+    for idx, r in enumerate ( all_city_stat ):
+        x_pos = np.arange(bins)
+        x_lab = list ( map (lambda x : " %d" % ((maxx-minn)*x/bins + minn), x_pos ) )
+
+        plt.ylabel("Proportion")
+        plt.xlabel("BB aspect ratio")
+
+        plt.bar(x_pos + idx* (1/float(len (all_city_stat)+1)), r,1. / (len (all_city_stat)+1), color=COLORS[idx] )
+
+        x_pos = x_pos[::2]
+        x_lab = x_lab[::2]
 
         plt.xticks(x_pos, x_lab)
