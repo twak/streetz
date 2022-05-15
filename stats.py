@@ -1,3 +1,7 @@
+
+
+from stats_segs import *
+
 import collections
 import math
 import os
@@ -11,18 +15,16 @@ import matplotlib.pyplot as plt
 
 from math import floor
 
-def l2(e, vertices):
-    a = np.array(vertices[e[0]])
-    b = np.array(vertices[e[1]])
-    return np.linalg.norm(a - b)
+from utils import l2
 
 
 def edge_count(vertices, edges, table_data, table_row_names ):
-    table_data.append( len (edges) ) # mean edges at a vertex)
+
+    table_data.append( "%d" % len (edges) ) # mean edges at a vertex)
     table_row_names.append("Number of edges")
 
 def vertex_count(vertices, edges, table_data, table_row_names ):
-    table_data.append( len (vertices) ) # mean edges at a vertex)
+    table_data.append(  "%d" % len (vertices) ) # mean edges at a vertex)
     table_row_names.append("Number of vertices")
 
 def total_len(vertices, edges, table_data, table_row_names ):
@@ -31,11 +33,11 @@ def total_len(vertices, edges, table_data, table_row_names ):
         dist = l2(e)
         total = total + dist
 
-    table_data.append( total ) # mean edges at a vertex)
+    table_data.append(  "%.2f" % total ) # mean edges at a vertex)
     table_row_names.append("Total length of streets (m)")
 
 
-def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=250, bins = 20, norm = True):
+def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=400, bins = 32, norm = True):
 
     out = np.zeros((bins), dtype=np.int)
 
@@ -54,7 +56,7 @@ def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=250, 
 
         total = total + dist
 
-    table_data.append( total / len (edges) ) # mean edges at a vertex)
+    table_data.append( "%.2f" % ( total / len (edges) ) ) # mean edges at a vertex)
     table_row_names.append("Mean edge length (m)")
 
     if norm:
@@ -63,7 +65,7 @@ def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=250, 
     return out
 
 
-def plot_edge_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=250, bins = 20):
+def plot_edge_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=400, bins = 32):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text(name)
@@ -76,212 +78,17 @@ def plot_edge_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, ma
         plt.xlabel("Edge length (m)")
 
         plt.bar(x_pos + idx* (1/float(len (all_city_stat)+1)), r,1. / (len (all_city_stat)+1), color=COLORS[idx] )
-        plt.xticks(x_pos[::2], x_lab[::2])
 
+        x_pos = x_pos[::2]
+        x_lab = x_lab[::2]
 
-SEGS = None
-SEG_LENGTHS = None
+        x_lab[len(x_lab) - 1] = "> %d" % maxx
+        x_pos[len(x_pos) - 1] = bins -1
 
-def build_segs(vertices, edges):
+        plt.xticks(x_pos, x_lab)
 
-    global SEGS, SEG_LENGTHS
+        #plt.xticks(x_pos[::2], x_lab[::2])
 
-    if SEGS == None:
-
-        SEG_LENGTHS = []
-        SEGS = []
-
-        v2e = {}
-        for v in vertices:
-            key = v.tobytes()
-            v2e[key] = []
-
-        for e in edges:
-            sk = vertices[e[0]].tobytes()
-            ek = vertices[e[1]].tobytes()
-
-            v2e[sk].append( e )
-            v2e[ek].append( e )
-
-        def is_jn(v_idx):
-            return len(v2e[vertices[v_idx].tobytes()]) != 2
-
-        def get_other_edge(e1_, v_idx): # get the other street of hte street from the vertex
-
-            e1 = np.array(e1_)
-            for e2 in v2e[ vertices[v_idx].tobytes()]:
-                if not np.array_equal ( e2, e1):
-                    return e2
-
-            raise RuntimeError("get other edge %d %s" % (e1, v_idx))
-
-
-        def get_other_vert_idx(e, v_idx): #
-
-            if e[0] == v_idx:
-                return e[1]
-            elif e[1] == v_idx:
-                return e[0]
-            else:
-                raise RuntimeError("get other vert %d %s" % (e, v_idx))
-
-        remaining = {tuple(row) for row in edges}
-
-        while len(remaining) > 0:
-
-            start = remaining.pop()
-
-            seg_len = l2(start, vertices)
-
-            S = [start[0], start[1]]
-            SEGS.append(S)
-
-            for idx, pt_idx in enumerate(start): # look forwards and backwards
-
-                next = start
-
-                while not is_jn(pt_idx): # keep going until we hit a junction
-
-                    next = get_other_edge(next, pt_idx)
-
-                    if tuple ( next ) not in remaining: # loop!
-                        break
-
-                    remaining.remove(tuple ( next ))
-                    seg_len = seg_len + l2(next, vertices)
-
-                    pt_idx = get_other_vert_idx(next, pt_idx)
-
-                    if idx == 0:
-                        S.insert(0, pt_idx)
-                    else:
-                        S.append(pt_idx)
-
-            SEG_LENGTHS.append (seg_len)
-
-    return SEGS
-
-def get_seg_lengths():
-    global SEG_LENGTHS
-
-    if SEG_LENGTHS is None:
-        raise RuntimeError("call build segments first!")
-
-    return SEG_LENGTHS
-
-def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=250, bins = 20, norm = True ):
-
-    global SEGS, SEG_LENGTHS
-    SEGS = None
-    SEG_LENGTHS = None
-
-    out = np.zeros((bins), dtype=np.int)
-
-    segs = build_segs(vertices, edges)
-
-    total = 0.
-
-    for s in segs:
-        length = 0
-        for i in range(len ( s)-1):
-            a = np.array(vertices[s[i]])
-            b = np.array(vertices[s[i+1]])
-            l = np.linalg.norm(a - b)
-            length = length + l
-
-
-        total = total + length
-
-        length = max (minn, min(maxx, length), length)
-
-        idx = floor(length * bins / (maxx - minn))
-        idx = min(idx, bins - 1)
-        out[idx] = out[idx] + 1
-
-    table_data.append( len(segs) )
-    table_row_names.append("Number of segments")
-
-    table_data.append( total / float(len(segs)) )
-    table_row_names.append("Mean length of segment (m)")
-
-    table_data.append(len (edges) / float (len(segs)))
-    table_row_names.append("Mean edges per segment")
-
-    if norm:
-        out = out / total
-
-    return out
-
-def plot_segment_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=250, bins = 20):
-
-    axs = plt.subplot(subplots, 1, subplot_idx)
-    axs.title.set_text(name)
-
-    for idx, r in enumerate ( all_city_stat ):
-        x_pos = np.arange(bins)
-        x_lab = list ( map (lambda x : " %d" % ((maxx-minn)*x/bins + minn), x_pos ) )
-
-        plt.ylabel("Proportion")
-        plt.xlabel("Segment length (m)")
-
-        plt.bar(x_pos + idx* (1/float(len (all_city_stat)+1)), r,1. / (len (all_city_stat)+1), color=COLORS[idx] )
-        plt.xticks(x_pos[::2], x_lab[::2])
-
-def segment_circuity ( vertices, edges, table_data, table_row_names, minn=1, maxx=1.1, bins = 20, norm = True ):
-
-    out = np.zeros((bins), dtype=np.int)
-
-    segs = build_segs(vertices, edges)
-    sl = get_seg_lengths()
-
-    total = 0.
-
-    for seg_idx, s in enumerate ( segs ):
-
-        euclid = np.linalg.norm(vertices[s[0]] - vertices[ s[len(s)-1] ] )
-
-        if euclid == 0: # loop?!
-            ratio = 1
-        else:
-            curve_len = sl[seg_idx]
-            ratio = curve_len / euclid
-
-        if (ratio == 1):
-            continue
-
-        total = total + ratio
-        ratio = max(minn, min(maxx, ratio), ratio)
-        print (ratio)
-
-        idx = floor( (ratio-minn) * bins / (maxx - minn))
-        idx = min(idx, bins - 1)
-        out[idx] = out[idx] + 1
-
-    table_data.append(total / len(segs))
-    table_row_names.append("Mean segment circuity")
-
-    if norm:
-        out = out / len (segs)
-
-    return out
-
-def plot_segment_circuity(all_city_stat, name, fig, subplots, subplot_idx, minn=1, maxx=1.1, bins = 20, norm = True ):
-
-    axs = plt.subplot(subplots, 1, subplot_idx)
-    axs.title.set_text(name)
-
-    for idx, r in enumerate ( all_city_stat ):
-        x_pos = np.arange(bins)
-        x_lab = x_pos * ((maxx-minn) / bins ) + minn #  list ( map (lambda x : " %d" % ((maxx-minn)*x/bins + minn), x_pos ) )
-
-        plt.ylabel("Proportion")
-        plt.xlabel("Segment circuity ratio")
-
-        plt.bar(x_pos + idx* (1/float(len (all_city_stat))), r,1. / len (all_city_stat), color=COLORS[idx] )
-
-        x_lab = ["%.2f" % y for y in x_lab]
-
-        plt.xticks(x_pos[::2], x_lab[::2])
 
 def edge_angle(vertices, edges, table_data, table_row_names, bins = 18, norm = True ):
 
@@ -309,34 +116,38 @@ def edge_angle(vertices, edges, table_data, table_row_names, bins = 18, norm = T
 
     #table_data[table_row, table_col] = np.argmax(out) * 3.141 / bins
 
-    table_data.append(np.argmax(out) * 3.141 / bins ) # mean edges at a vertex)
-    table_row_names.append("Argmax edge angle (rads)")
+    am = np.argmax(out)
+    table_data.append("%.2f" % (am * 180. / bins ) ) # mean edges at a vertex)
+    table_row_names.append("Argmax edge angle (degrees)")
 
     if norm:
-        out = out / total
+        out = out / float ( out[am] )
 
     return out
 
 def plot_edge_angle(all_city_stat, name, fig, subplots, subplot_idx, bins = 18):
 
     axs = plt.subplot(subplots, 1, subplot_idx, polar=True)
-    axs.title.set_text("Fraction of Street Length by Angle")
+    axs.title.set_text("Fraction of Street Length by Angle (normalised by per-graph max)")
     axs.set_theta_zero_location("N")
     axs.set_theta_direction(-1)
+    axs.set_yticks([])
 
     #axs.set_theta_offset(pi)
 
     for idx, r in enumerate ( all_city_stat ):
 
-        x_pos = np.arange(2*bins)
+        x_pos = np.arange(2*bins+1)
         x_pos = x_pos * np.pi / bins #list(map ( lambda x : x * np.pi / bins, x_pos) )
         #x_lab = list ( map (lambda x : " %d" % ((maxx-minn)*x/bins + minn), x_pos ) )
 
         # plt.ylabel("frequency")
         # plt.xlabel("edge length (m)")
 
+        data = np.concatenate((r, r, [ r[0] ] ) ) # add point to close the loop
+
         #plt.bar(x_pos + (idx * (1. / len(all_city_stat))), np.concatenate((r, r)), width=np.pi / (bins * len(all_city_stat)), color=COLORS[idx])  # , edgecolor="white"
-        plt.plot(x_pos, np.concatenate((r, r)), color=COLORS[idx])  # , edgecolor="white"
+        plt.plot(x_pos, data, color=COLORS[idx])  # , edgecolor="white"
         #np.arange(2 * bins) + idx * (1. / len(all_city_stat))
         # plt.xticks(x_pos[::2], x_lab[::2])
 
@@ -369,10 +180,10 @@ def node_degree(vertices, edges, table_data, table_row_names, maxx = 6, norm = T
             total = total + counter[i]
 
 
-    table_data.append(len (edges) * 2 / len (vertices) ) # mean edges at a vertex)
+    table_data.append( "%.2f" % (len (edges) * 2 / len (vertices) ) ) # mean edges at a vertex)
     table_row_names.append("Mean node degree")
 
-    table_data.append(out[0])  # mean edges at a vertex)
+    table_data.append( "%d" % out[0])  # mean edges at a vertex)
     table_row_names.append("Number of dead ends")
 
     if norm:
@@ -397,7 +208,6 @@ def plot_node_degree(all_city_stat, name, fig, subplots, subplot_idx, maxx = 6):
         plt.xticks(x_pos, x_lab)
         # axis.plot( x_pos, r, 'tab:orange')
 
-COLORS = ['#8eff98', '#ffcf8e', '#8ee6ff', '#fff58e', '#ff918e']
 
 def main():
 
@@ -425,6 +235,8 @@ def main():
     table_data = []
 
     for idx, npz in enumerate(npz_file_names):
+
+        reset_seg_cache()
 
         npz_path = os.path.join(input_path, npz)
         np_file_content = np.load(npz_path)
@@ -454,7 +266,7 @@ def main():
     axs = plt.subplot(subplot_count, 1, 1)
 
     axs.axis('off')
-    table_strs = [[ "%.2f" % y for y in x] for x in np.transpose(table_data)]
+    table_strs = [[ "%s" % y for y in x] for x in np.transpose(table_data)]
     metric_names = list ( map (lambda m : m.replace("_", " "), metric_fns))
     tab = axs.table(cellText=table_strs, colLabels=npz_file_names, rowLabels=table_row_names, loc='center', cellLoc='center')
     tab.auto_set_column_width(col=list(range(len(npz_file_names))))
