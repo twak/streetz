@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from math import floor
 from utils import l2, COLORS
 
+from fast_plot import FastPlot
+
 SEGS = None
 SEG_LENGTHS = None
 
@@ -108,8 +110,6 @@ def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=4
 
     total = 0.
 
-    edge_cols = {}
-
     for s_idx, s in enumerate ( segs ):
 
         length = sl[s_idx]
@@ -137,6 +137,8 @@ def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=4
 
     if norm:
         out = out / float ( len (segs) )
+
+    FastPlot(2048, 2048, vertices, edges).run()
 
     return out
 
