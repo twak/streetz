@@ -160,9 +160,6 @@ def main():
         vertices = np_file_content['tile_graph_v']
         edges    = np_file_content['tile_graph_e']
 
-        print(str(vertices.shape))
-        print(str(edges.shape))
-
         if hasattr(np_file_content, 'land_and_water_map'):
             land_and_water = np_file_content['land_and_water_map']
         else:
