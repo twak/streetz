@@ -252,7 +252,7 @@ def segment_circuity ( vertices, edges, table_data, table_row_names, minn=1, max
         count = count + 1
 
     table_data.append("%.4f" % (total / len(segs)))
-    table_row_names.append("Mean (all) segment circuity")
+    table_row_names.append("Mean segment circuity")
 
     if norm:
         out = out / float (count)
