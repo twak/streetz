@@ -3,6 +3,7 @@
 instructions:
 
 * Create a folder in root called `npz` your data. Number of files is limited by number colors.
+* Check the `scale_to_meters` parameter in `stats.py` will convert the npz data to meters (e.g, it should be the tile size)
 * Run `stats.py`. Runtime is about 2mins per graph. The output figure is created using `plt.show()`.
 * Edit `COLORS` in `utils.py` to adjust coloring
 * Edit the `metric_fns` array in `stats.py` at around line `229` to control which statistics are run. The graphs function (transport ration, betweenness, & pagerank) are the slow ones.
@@ -26,8 +27,8 @@ We don't process holes, so a loop inside a block counts as an overlapping block.
   * Maximum Betweenness Centrality measures the share of shortest paths which pass through the network's most important node. Again, stochastic.
 * Pagerank
   * intended to measure integration of streets
-  * google/lary page's algorithm on topology only (i.e., ignoring street lengths)
-  * pagerank-on-edges uses the street edges as nodes (connected to other edges at their start and end), so we can initialize them with a score proportional to their length
+  * google/lary page's algorithm on topology only (i.e., ignoring street lengths)...so
+  * ...pagerank-on-edges uses the street edges as nodes (connected to other edges at their start and end), so we can initialize them with a score proportional to their length
 
 in progress:
   * normalise "number of ###' as a density using land-area fraction

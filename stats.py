@@ -215,7 +215,7 @@ def plot_node_degree(all_city_stat, name, fig, subplots, subplot_idx, maxx = 6):
         # axis.plot( x_pos, r, 'tab:orange')
 
 
-def main():
+def main(scale_to_meters = 1):
 
     input_path = sys.argv[1]
     output_path = sys.argv[2]
@@ -255,7 +255,7 @@ def main():
         np_file_content = np.load(npz_path)
 
         # Vertices
-        vertices = np_file_content['tile_graph_v'] * 20000 # distances in meters
+        vertices = np_file_content['tile_graph_v'] * scale_to_meters # distances in meters
         edges = np_file_content['tile_graph_e']
 
         td = []
@@ -312,7 +312,7 @@ if __name__ == '__main__':
 
     # dxf_to_npz("C:\\Users\\twak\\Documents\\CityEngine\\Default Workspace\\datatest\\data\\dxf_streets_1.dxf", 20000, "test.npz")
 
-    main()
+    main(scale_to_meters=20000)
 
 
 

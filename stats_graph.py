@@ -275,7 +275,6 @@ def pagerank_on_edges( vertices, edges, table_data, table_row_names, minn=0, max
                 if not np.array_equal(e2, e):
                     d.add_edge(str(e), str(e2))
 
-
     print ("      starting pagerank...")
     p = nx.pagerank(d, max_iter = 1000, tol=1e-8, personalization=personalization)
     print ("      ...done")
@@ -309,7 +308,7 @@ def pagerank_on_edges( vertices, edges, table_data, table_row_names, minn=0, max
 def plot_pagerank_on_edges(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=0.0002, bins = 32 ):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
-    axs.title.set_text("Pagerank-by-edge (initialisation with street lengths)")
+    axs.title.set_text("Pagerank-by-Edge (initialisation with street lengths)")
     axs.spines['top'].set_color('lightgray')
     axs.spines['right'].set_color('lightgray')
 
