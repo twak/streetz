@@ -228,9 +228,9 @@ def main():
 
     metric_fns = [
                    'edge_count', 'vertex_count',  'edge_length',
-                    'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
-                   'block_perimeter', 'block_area', 'block_aspect',
-                    'transport_ratio', 'betweenness_centrality', # betweenness must follow transport_ratio!
+                   #  'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
+                   # 'block_perimeter', 'block_area', 'block_aspect',
+                   #  'transport_ratio', 'betweenness_centrality', # betweenness must follow transport_ratio!
                    ]
 
     all_city_stats = {}
@@ -281,6 +281,9 @@ def main():
     axs.axis('off')
     table_strs = [[ "%s" % y for y in x] for x in np.transpose(table_data)]
     metric_names = list ( map (lambda m : m.replace("_", " "), metric_fns))
+
+    utils.write_latex_table (table_strs, npz_file_names, table_row_names, 'table.tex')
+
     tab = axs.table(cellText=table_strs, colLabels=npz_file_names, rowLabels=table_row_names, loc='center', cellLoc='center')
     tab.auto_set_column_width(col=list(range(len(npz_file_names))))
     tab.set_fontsize(8)

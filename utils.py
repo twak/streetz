@@ -44,3 +44,28 @@ def plot (r, plt, bins, idx, all_city_stat):
 
 # blue vs yellows
 COLORS = ['#04c7ff', '#ff9955', '#ff6755', '#ffd655', '#fffd8c']
+
+
+def write_latex_table(table_strs, npz_file_names, table_row_names, file):
+
+    with open(file, 'w') as f:
+        f.write('\\begin{center}\n')
+        f.write('\\begin{tabular}  { |c|')
+        f.write('c|' * len ( npz_file_names) )
+        f.write('} \n')
+        f.write('\\hline\n')
+
+        first_line = "&" + " & ".join ( npz_file_names )
+        f.write(first_line + "\\\\ \n")
+        f.write('\\hline\n')
+
+
+        for idx, str in enumerate(table_strs):
+            line = table_row_names[idx] + " & "
+            line = line + " & ".join (str)
+            f.write(line + "\\\\ \n")
+
+        f.write('\\hline\n')
+        f.write('\\end{tabular}\n')
+        f.write('\\end{center}\n')
+

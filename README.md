@@ -20,16 +20,18 @@ We don't process holes, so a loop inside a block counts as an overlapping block.
   * The aspect ratio of a block is found by finding the smallest rectangle which covers all vertices. The aspect ratio of the rectangle's height/width is reported.
 * Rectangularness is the ratio of the true block area to the smallest rectangle. A value of 1 means all blocks are rectangular.
 * Transport ratio is calculated between two vertices and is the ratio of the shortest path length to euclidean distance. It is slow to compute the true value, so we sample random vertex pairs. Values seem to converge at around 300 iterations…but smoother graphs with higher values.
+
 In progress:
   * Betweenness-centrality measures the number of times that each vertex is visited on shortest paths between all combinations of start and end nodes. Again for speed purposes, this is sampled stochastically while building the transport ratio.
   https://networkx.org/documentation/stable/reference/algorithms/centrality.html
+  * normalise "number of ###' as a density using land-area fraction
   * Pagerank
     * topology only on vertices
     * weighted by distance using graph-dual on 
   * Density as above
   * Graphs for the above where it makes sense
-* references
-  * https://arxiv.org/pdf/1705.02198.pdf
-  * https://appliednetsci.springeropen.com/track/pdf/10.1007/s41109-019-0189-1.pdf
-* transport ratio
-  * https://arxiv.org/ftp/arxiv/papers/1708/1708.00836.pdf
+  * references
+    * https://arxiv.org/pdf/1705.02198.pdf
+    * https://appliednetsci.springeropen.com/track/pdf/10.1007/s41109-019-0189-1.pdf
+  * transport ratio
+    * https://arxiv.org/ftp/arxiv/papers/1708/1708.00836.pdf
