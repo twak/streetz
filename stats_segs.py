@@ -201,6 +201,8 @@ def plot_segment_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0,
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text(name)
+    axs.spines['top'].set_color('lightgray')
+    axs.spines['right'].set_color('lightgray')
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)
@@ -245,7 +247,6 @@ def segment_circuity ( vertices, edges, table_data, table_row_names, minn=1, max
             continue
 
         ratio = max(minn, min(maxx, ratio), ratio)
-        #print (ratio)
 
         idx = floor( (ratio-minn) * bins / (maxx - minn))
         idx = min(idx, bins - 1)
@@ -264,6 +265,8 @@ def plot_segment_circuity(all_city_stat, name, fig, subplots, subplot_idx,  minn
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text("Segment Circuity (> 1.02)")
+    axs.spines['top'].set_color('lightgray')
+    axs.spines['right'].set_color('lightgray')
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)

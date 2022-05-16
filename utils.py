@@ -40,4 +40,7 @@ def plot (r, plt, bins, idx, all_city_stat):
     else: # lines
         plt.plot(np.arange(bins), r, lw=2, color=COLORS[idx])
 
-COLORS = ['#8eff98', '#ffcf8e', '#8ee6ff', '#fff58e', '#ff918e']
+# multicols COLORS = ['#8ee6ff', '#8eff98', '#ffcf8e', , '#fff58e', '#ff918e']
+
+# blue vs yellows
+COLORS = ['#04c7ff', '#ff9955', '#ff6755', '#ffd655', '#fffd8c']

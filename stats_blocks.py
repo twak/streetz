@@ -154,6 +154,8 @@ def plot_block_perimeter (all_city_stat, name, fig, subplots, subplot_idx, minn=
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text("Block Perimeter (< 2,000m)")
+    axs.spines['top'].set_color('lightgray')
+    axs.spines['right'].set_color('lightgray')
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)
@@ -216,6 +218,8 @@ def plot_block_area (all_city_stat, name, fig, subplots, subplot_idx, minn=0, ma
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text("Block Area ( 1m^2 < area <  30,000m^2)")
+    axs.spines['top'].set_color('lightgray')
+    axs.spines['right'].set_color('lightgray')
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)
@@ -323,6 +327,8 @@ def plot_block_aspect (all_city_stat, name, fig, subplots, subplot_idx,minn=0, m
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text("Block Bounding Box Aspect Ratio")
+    axs.spines['top'].set_color('lightgray')
+    axs.spines['right'].set_color('lightgray')
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)

@@ -2,6 +2,7 @@
 
 from stats_segs import *
 from stats_blocks import *
+from stats_graph import *
 
 import collections
 import math
@@ -10,12 +11,8 @@ import sys
 
 import numpy as np
 import load_tiles_and_plot
-
-import matplotlib
 import matplotlib.pyplot as plt
-
 from math import floor
-
 from utils import l2
 
 
@@ -71,6 +68,9 @@ def plot_edge_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, ma
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text(name)
+
+    axs.spines['top'].set_color('lightgray')
+    axs.spines['right'].set_color('lightgray')
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)
@@ -135,6 +135,7 @@ def plot_edge_angle(all_city_stat, name, fig, subplots, subplot_idx, bins = 18):
     axs.set_theta_direction(-1)
     axs.set_yticks([])
 
+
     #axs.set_theta_offset(pi)
 
     for idx, r in enumerate ( all_city_stat ):
@@ -197,6 +198,8 @@ def plot_node_degree(all_city_stat, name, fig, subplots, subplot_idx, maxx = 6):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text(name)
+    axs.spines['top'].set_color('lightgray')
+    axs.spines['right'].set_color('lightgray')
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = list(range(maxx-1))
@@ -224,9 +227,10 @@ def main():
     npz_file_names = [x for x in os.listdir(input_path) if x.endswith('.npz')]
 
     metric_fns = [
-                   'edge_count', 'vertex_count', 'edge_length',
+                   'edge_count', 'vertex_count',  'edge_length',
                     'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
-                   'block_perimeter', 'block_area', 'block_aspect'
+                   'block_perimeter', 'block_area', 'block_aspect',
+                    'transport_ratio', 'betweenness_centrality', # betweenness must follow transport_ratio!
                    ]
 
     all_city_stats = {}
@@ -244,6 +248,7 @@ def main():
 
         reset_seg_cache()
         reset_block_cache()
+        reset_graph_cache()
 
         npz_path = os.path.join(input_path, npz)
         np_file_content = np.load(npz_path)
