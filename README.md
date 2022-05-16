@@ -9,7 +9,7 @@ instructions:
 * Latex formatted table is written to `table.tex` in the root folder.
 * `SAMPLES` in `stats_graph.py` controls the number of shortest paths calculated for transport ratio and betweenness
 
-Implementation notes:
+implementation notes:
 * a segment is a maximum sequence of adjacent edges between vertices which have a valency != 2 (i.e., segments can bend 90 degrees, as long as they don't go through junctions).
 * Segment circuity measures the ratio of the euclidean distance between the start and end of a segment and its length. e.g., how curved the segments are.
 * Edge/vertex/segment/block density normalises by the area of land (and not water) in the map. 
@@ -27,14 +27,13 @@ We don't process holes, so a loop inside a block counts as an overlapping block.
 * Pagerank
   * intended to measure integration of streets
   * google/lary page's algorithm on topology only (i.e., ignoring street lengths)
-  * Pagerank dual is initiated distance using a graph-dual. This allows us to put distance in vertices. 
+  * pagerank-on-edges uses the street edges as nodes (connected to other edges at their start and end), so we can initialize them with a score proportional to their length
 
-In progress:
+in progress:
   * normalise "number of ###' as a density using land-area fraction
-  * Density as above
   * Graphs for the above where it makes sense
-  * references
-    * https://arxiv.org/pdf/1705.02198.pdf
-    * https://appliednetsci.springeropen.com/track/pdf/10.1007/s41109-019-0189-1.pdf
-  * transport ratio
-    * https://arxiv.org/ftp/arxiv/papers/1708/1708.00836.pdf
+  
+references:
+ * https://arxiv.org/pdf/1705.02198.pdf
+ * https://appliednetsci.springeropen.com/track/pdf/10.1007/s41109-019-0189-1.pdf
+ * transport ratio https://arxiv.org/ftp/arxiv/papers/1708/1708.00836.pdf

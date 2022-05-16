@@ -17,18 +17,22 @@ class VertexMap ():
 
     def __init__(s, vertices, edges):
         s.v2e = {}
+        # s.v2ei = {}
         s.v = vertices
         s.e = edges
 
         for v in range(len ( vertices) ):
             s.v2e[v] = []
 
-        for e in edges:
+        for idx, e in enumerate(edges):
             # sk = vertices[e[0]].tobytes()
             # ek = vertices[e[1]].tobytes()
 
-            s.v2e[e[0]].append( e )
-            s.v2e[e[1]].append( e )
+            s.v2e[e[0]].append(e)
+            s.v2e[e[1]].append(e)
+
+            # s.v2e[e[0]].append(idx)
+            # s.v2e[e[1]].append(idx)
 
     def is_jn(s,v_idx):
         return len(s.v2e[ v_idx]) != 2
@@ -64,6 +68,9 @@ class VertexMap ():
                 raise RuntimeError("lookup failure")
 
         return out
+
+    # def get_other_edges(s, next_v): # returns edge indicies
+    #     return s.v2ei[ next_v ]
 
 def build_V2E(v, e):
 

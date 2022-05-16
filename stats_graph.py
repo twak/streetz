@@ -5,6 +5,7 @@ import numpy as np
 
 import utils
 from utils import l2, l2p
+from stats_segs import build_V2E
 
 from math import floor
 
@@ -21,7 +22,8 @@ def build_graph(vertices, edges):
         GRAPH = nx.Graph()
 
         for e in edges:
-            GRAPH.add_edge(e[0], e[1], length=l2 (e, vertices) )
+            GRAPH.add_edge(e[0], e[1], length=l2(e, vertices))
+            GRAPH.add_edge(e[1], e[0], length=l2(e, vertices))
 
     return GRAPH
 
@@ -197,7 +199,7 @@ def pagerank( vertices, edges, table_data, table_row_names, minn=0, maxx=0.0002,
     g = build_graph(vertices, edges)
 
     print ("      starting pagerank...")
-    p = nx.pagerank(g, tol=1e-6)
+    p = nx.pagerank(g, tol=1e-6 ) # , weight='length') - weight as length doesn't make sense - more transfer down longer roads?
     print ("      ...done")
 
     total = 0
@@ -229,7 +231,7 @@ def pagerank( vertices, edges, table_data, table_row_names, minn=0, maxx=0.0002,
 def plot_pagerank(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=0.0002, bins = 32 ):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
-    axs.title.set_text(name)
+    axs.title.set_text("Pagerank (topology only)")
     axs.spines['top'].set_color('lightgray')
     axs.spines['right'].set_color('lightgray')
 
@@ -251,52 +253,63 @@ def plot_pagerank(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=
         plt.xticks(x_pos, x_lab)
 
 
-def dual_pagerank( vertices, edges, table_data, table_row_names, minn=0, maxx=0.0002, bins = 32, norm = True):
+def pagerank_on_edges( vertices, edges, table_data, table_row_names, minn=0, maxx=0.0002, bins = 32, norm = True):
 
     out = np.zeros((bins), dtype=np.int)
 
     # build a dual-graph
-    g = nx.Graph()
+    d = nx.Graph()
 
-    get
+    v2e = build_V2E(vertices, edges)
 
-    for e in edges:
-        GRAPH.add_edge(e[0], e[1], length=l2(e, vertices))
+    personalization = {}
+
+    for e_idx, e in enumerate ( edges ):
+
+        d.add_node(str(e), weight = l2(e, vertices))
+
+        personalization[str(e)] = l2(e, vertices)
+
+        for i in e:
+            for e2 in v2e.v2e[i]:
+                if not np.array_equal(e2, e):
+                    d.add_edge(str(e), str(e2))
+
 
     print ("      starting pagerank...")
-    p = nx.pagerank(g, tol=1e-6)
+    p = nx.pagerank(d, max_iter = 1000, tol=1e-8, personalization=personalization)
     print ("      ...done")
 
     total = 0
     max_pr = -1
-    min_pr = -1
+    min_pr = 1e100
 
-    for i in range(len(vertices)):
-        pr = p[i]
+    for e in edges:
+        pr = p[str(e)]
         idx = floor( ( pr -minn) * bins / (maxx - minn))
         idx = min(idx, bins - 1)
         out[idx] += 1
         max_pr = max(max_pr, pr)
-        min_pr = max(min_pr, pr)
+        min_pr = min(min_pr, pr)
         total += pr
 
     table_data.append("%.6f" % (total / float(len(vertices))))  # mean edges at a vertex)
-    table_row_names.append(f"Mean pagerank")
+    table_row_names.append(f"Mean pagerank-by-edge")
 
     table_data.append("%.6f" % max_pr)
-    table_row_names.append(f"Maximum pagerank")
+    table_row_names.append(f"Maximum pagerank-by-edge")
 
     table_data.append("%.6f" % min_pr)
-    table_row_names.append(f"Minimum pagerank")
+    table_row_names.append(f"Minimum pagerank-by-edge")
 
-    out = out/len(vertices)
+    out = out/len(edges)
 
     return out
 
-def plot_dual_pagerank(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=0.0002, bins = 32 ):
+def plot_pagerank_on_edges(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=0.0002, bins = 32 ):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
-    axs.title.set_text(name)
+    axs.title.set_text("Pagerank-by-edge (initialisation with street lengths)")
     axs.spines['top'].set_color('lightgray')
     axs.spines['right'].set_color('lightgray')
 

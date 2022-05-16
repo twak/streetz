@@ -227,14 +227,11 @@ def main():
     npz_file_names = [x for x in os.listdir(input_path) if x.endswith('.npz')]
 
     metric_fns = [
-                   # 'edge_count', 'vertex_count',  'edge_length',
-                   # 'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
-                   # 'block_perimeter', 'block_area', 'block_aspect',
+                   'edge_count', 'vertex_count',  'edge_length',
+                   'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
+                   'block_perimeter', 'block_area', 'block_aspect',
                    # slow ones:
-                   # 'transport_ratio',
-                   #'betweenness_centrality',
-                    'pagerank', 'dual_pagerank'
-
+                   'transport_ratio', 'betweenness_centrality', 'pagerank', 'pagerank_on_edges'
                    ]
 
     all_city_stats = {}
