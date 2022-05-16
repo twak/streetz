@@ -38,7 +38,7 @@ def plot (r, plt, bins, idx, all_city_stat):
         cw = 1 / float(len(all_city_stat) + 1)
         plt.bar(np.arange(bins) + idx * cw - 0.5 + cw, r, 1. / (len(all_city_stat) + 1), color=COLORS[idx])
     else: # lines
-        plt.plot(np.arange(bins), r, lw=2, color=COLORS[idx])
+        plt.plot(np.arange(bins), r, lw=2, color=COLORS[idx%len(COLORS)])
 
 # multicols COLORS = ['#8ee6ff', '#8eff98', '#ffcf8e', , '#fff58e', '#ff918e']
 

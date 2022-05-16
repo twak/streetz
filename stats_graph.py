@@ -11,6 +11,7 @@ from math import floor
 import random
 
 GRAPH = None
+SAMPLES = 300
 
 def build_graph(vertices, edges):
     global GRAPH
@@ -40,22 +41,26 @@ def transport_ratio( vertices, edges, table_data, table_row_names, minn=1, maxx=
 
     count = 0
     total = 0.
+    total_steps = 0
+    total_length = 0.
 
     TIMES_VISITED = np.zeros((len(vertices)), dtype=np.int)
 
     def compute (a,b):
 
-        nonlocal count, total
+        nonlocal count, total, total_steps, total_length
         global TIMES_VISITED
 
         if a != b:
             path_length = 0
+            path_steps = 0
 
             try:
                 path_steps = nx.shortest_path(g, a, b, weight='length')
                 for pi in range(len(path_steps) - 1):
                     path_length += l2p(path_steps[pi], path_steps[pi + 1], vertices)
                     TIMES_VISITED[path_steps[pi]] = TIMES_VISITED[path_steps[pi]] + 1
+                path_steps = len (path_steps)
 
             except nx.exception.NetworkXNoPath:
                 return
@@ -73,25 +78,32 @@ def transport_ratio( vertices, edges, table_data, table_row_names, minn=1, maxx=
 
             count += 1
             total += transport_ratio
+            total_steps += path_steps
+            total_length += path_length
 
     if False: # compute for all ~1hr
         for a in range(len(vertices)):
-            print(f'{a}/{len(vertices)}')
+            print(f'    {a}/{len(vertices)}')
             for b in range(len(vertices)):
-                print(f'  {b}/{len(vertices)} transport ratio: {total/count}')
+                print(f'      {b}/{len(vertices)} transport ratio: {total/count}')
                 compute (a,b)
         table_row_names.append(f"Transport ratio")
     else:
-        samples = 300
-        for i in range(samples):
-            print(f'{i}/{samples}: transport ratio: {total/max(1,count)}')
+        for i in range(SAMPLES):
+            print(f'    {i}/{SAMPLES}: transport ratio: {total/max(1,count)}')
             a = random.randint(0, len(vertices))
             b = random.randint(0, len(vertices))
             compute(a,b)
 
-        table_row_names.append(f"Transport ratio (n={samples})")
+        table_row_names.append(f"Transport ratio (n={SAMPLES})")
 
-    table_data.append( ("%.2f" % (total/count) ))
+    table_data.append(("%.2f" % (total / count)))
+
+    table_row_names.append(f"Mean steps in random walk (n={SAMPLES})")
+    table_data.append(("%.2f" % (total_steps / count)))
+
+    table_row_names.append(f"Mean length of random walk (m) (n={SAMPLES})")
+    table_data.append(("%.2f" % (total_length / count)))
 
     if norm:
         out = out / float ( count )
@@ -124,36 +136,97 @@ def plot_transport_ratio(all_city_stat, name, fig, subplots, subplot_idx, minn=1
 
         plt.xticks(x_pos, x_lab)
 
-def betweenness_centrality( vertices, edges, table_data, table_row_names, minn=0, maxx=1, bins = 32 ):
-
-    global TIMES_VISITED
+def betweenness_centrality( vertices, edges, table_data, table_row_names, minn=0, maxx=0.4, bins = 32 ):
 
     out = np.zeros((bins), dtype=np.int)
+    g = build_graph(vertices, edges)
 
-    if TIMES_VISITED == None:
-        return out
+    print ("      starting betweenness_centrality...")
+    p = nx.betweenness_centrality(g, k=min(SAMPLES, len(vertices)) )
+    print ("      ...done")
 
-    most_times_visited =TIMES_VISITED.max()
-    TIMES_VISITED = TIMES_VISITED.astype(np.float) / most_times_visited
+    total = 0
+    max_bc = -1
 
-    total = 0.
+    for i in range(len(vertices)):
+        bc = p[i]
+        idx = floor( ( bc -minn) * bins / (maxx - minn))
+        idx = min(idx, bins - 1)
+        out[idx] += 1
+        max_bc = max(max_bc, bc)
+        total += bc
 
-    for v in TIMES_VISITED:
+    table_data.append("%.4f" % (total / float(len(vertices)) ))  # mean edges at a vertex)
+    table_row_names.append(f"Mean betweenness centrality (n={SAMPLES})")
 
-        idx = floor ( v * bins / (maxx - minn) )
-        idx = min(idx, bins-1)
-        out[idx] = out[idx] + 1
-        total += v
-
-
-
-    table_data.append( "%.2f" % ( total / len (edges) ) ) # mean edges at a vertex)
-    table_row_names.append("Mean edge length (m)")
+    table_data.append("%.4f" % max_bc )
+    table_row_names.append(f"Maximum betweenness centrality (n={SAMPLES})")
 
     return out
 
 
-def plot_betweenness_centrality(all_city_stat, name, fig, subplots, subplot_idx, minn=1, maxx=3, bins = 32 ):
+
+# this doesn't help anyone!
+# def plot_betweenness_centrality(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=0.4, bins = 32 ):
+#
+#     axs = plt.subplot(subplots, 1, subplot_idx)
+#     axs.title.set_text(name)
+#     axs.spines['top'].set_color('lightgray')
+#     axs.spines['right'].set_color('lightgray')
+#
+#     for idx, r in enumerate ( all_city_stat ):
+#         x_pos = np.arange(bins)
+#         x_lab = list ( map (lambda x : " %.4f" % ((maxx-minn)*x/bins + minn), x_pos ) )
+#
+#         plt.ylabel("Proportion")
+#         plt.xlabel("Betweenness centrality")
+#
+#         utils.plot(r, plt, bins, idx, all_city_stat)
+#
+#         x_pos = x_pos[::4]
+#         x_lab = x_lab[::4]
+#
+#         x_lab[len(x_lab)-1] = "> %.2f" % maxx
+#         x_pos[len(x_pos)-1] = bins -1
+#
+#         plt.xticks(x_pos, x_lab)
+
+def pagerank( vertices, edges, table_data, table_row_names, minn=0, maxx=0.0002, bins = 32, norm = True):
+
+    out = np.zeros((bins), dtype=np.int)
+    g = build_graph(vertices, edges)
+
+    print ("      starting pagerank...")
+    p = nx.pagerank(g, tol=1e-6)
+    print ("      ...done")
+
+    total = 0
+    max_pr = -1
+    min_pr = -1
+
+    for i in range(len(vertices)):
+        pr = p[i]
+        idx = floor( ( pr -minn) * bins / (maxx - minn))
+        idx = min(idx, bins - 1)
+        out[idx] += 1
+        max_pr = max(max_pr, pr)
+        min_pr = max(min_pr, pr)
+        total += pr
+
+    table_data.append("%.6f" % (total / float(len(vertices))))  # mean edges at a vertex)
+    table_row_names.append(f"Mean pagerank")
+
+    table_data.append("%.6f" % max_pr)
+    table_row_names.append(f"Maximum pagerank")
+
+    table_data.append("%.6f" % min_pr)
+    table_row_names.append(f"Minimum pagerank")
+
+    out = out/len(vertices)
+
+    return out
+
+def plot_pagerank(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=0.0002, bins = 32 ):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text(name)
@@ -162,17 +235,84 @@ def plot_betweenness_centrality(all_city_stat, name, fig, subplots, subplot_idx,
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)
-        x_lab = list ( map (lambda x : " %.2f" % ((maxx-minn)*x/bins + minn), x_pos ) )
+        x_lab = list ( map (lambda x : " %.6f" % ((maxx-minn)*x/bins + minn), x_pos ) )
 
         plt.ylabel("Proportion")
-        plt.xlabel("Transport ratio")
+        plt.xlabel("Pagerank")
 
         utils.plot(r, plt, bins, idx, all_city_stat)
 
-        x_pos = x_pos[::2]
-        x_lab = x_lab[::2]
+        x_pos = x_pos[::4]
+        x_lab = x_lab[::4]
 
-        x_lab[len(x_lab)-1] = "> %.2f" % maxx
+        x_lab[len(x_lab)-1] = "> %.6f" % maxx
+        x_pos[len(x_pos)-1] = bins -1
+
+        plt.xticks(x_pos, x_lab)
+
+
+def dual_pagerank( vertices, edges, table_data, table_row_names, minn=0, maxx=0.0002, bins = 32, norm = True):
+
+    out = np.zeros((bins), dtype=np.int)
+
+    # build a dual-graph
+    g = nx.Graph()
+
+    get
+
+    for e in edges:
+        GRAPH.add_edge(e[0], e[1], length=l2(e, vertices))
+
+    print ("      starting pagerank...")
+    p = nx.pagerank(g, tol=1e-6)
+    print ("      ...done")
+
+    total = 0
+    max_pr = -1
+    min_pr = -1
+
+    for i in range(len(vertices)):
+        pr = p[i]
+        idx = floor( ( pr -minn) * bins / (maxx - minn))
+        idx = min(idx, bins - 1)
+        out[idx] += 1
+        max_pr = max(max_pr, pr)
+        min_pr = max(min_pr, pr)
+        total += pr
+
+    table_data.append("%.6f" % (total / float(len(vertices))))  # mean edges at a vertex)
+    table_row_names.append(f"Mean pagerank")
+
+    table_data.append("%.6f" % max_pr)
+    table_row_names.append(f"Maximum pagerank")
+
+    table_data.append("%.6f" % min_pr)
+    table_row_names.append(f"Minimum pagerank")
+
+    out = out/len(vertices)
+
+    return out
+
+def plot_dual_pagerank(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=0.0002, bins = 32 ):
+
+    axs = plt.subplot(subplots, 1, subplot_idx)
+    axs.title.set_text(name)
+    axs.spines['top'].set_color('lightgray')
+    axs.spines['right'].set_color('lightgray')
+
+    for idx, r in enumerate ( all_city_stat ):
+        x_pos = np.arange(bins)
+        x_lab = list ( map (lambda x : " %.6f" % ((maxx-minn)*x/bins + minn), x_pos ) )
+
+        plt.ylabel("Proportion")
+        plt.xlabel("Pagerank")
+
+        utils.plot(r, plt, bins, idx, all_city_stat)
+
+        x_pos = x_pos[::4]
+        x_lab = x_lab[::4]
+
+        x_lab[len(x_lab)-1] = "> %.6f" % maxx
         x_pos[len(x_pos)-1] = bins -1
 
         plt.xticks(x_pos, x_lab)

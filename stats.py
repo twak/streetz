@@ -150,7 +150,7 @@ def plot_edge_angle(all_city_stat, name, fig, subplots, subplot_idx, bins = 18):
         data = np.concatenate((r, r, [ r[0] ] ) ) # add point to close the loop
 
         #plt.bar(x_pos + (idx * (1. / len(all_city_stat))), np.concatenate((r, r)), width=np.pi / (bins * len(all_city_stat)), color=COLORS[idx])  # , edgecolor="white"
-        plt.plot(x_pos, data, color=COLORS[idx])  # , edgecolor="white"
+        plt.plot(x_pos, data, color=COLORS[idx%len(COLORS)])  # , edgecolor="white"
         #np.arange(2 * bins) + idx * (1. / len(all_city_stat))
         # plt.xticks(x_pos[::2], x_lab[::2])
 
@@ -209,7 +209,7 @@ def plot_node_degree(all_city_stat, name, fig, subplots, subplot_idx, maxx = 6):
         plt.xlabel("Node degree")
 
         cw = 1/float(len (all_city_stat) + 1 )
-        plt.bar(np.arange(maxx) + idx*cw - 0.5 + cw, r, width= 1. / (len (all_city_stat)+1), color=COLORS[idx])
+        plt.bar(np.arange(maxx) + idx*cw - 0.5 + cw, r, width= 1. / (len (all_city_stat)+1), color=COLORS[idx%len(COLORS)])
 
         plt.xticks(x_pos, x_lab)
         # axis.plot( x_pos, r, 'tab:orange')
@@ -227,10 +227,14 @@ def main():
     npz_file_names = [x for x in os.listdir(input_path) if x.endswith('.npz')]
 
     metric_fns = [
-                   'edge_count', 'vertex_count',  'edge_length',
-                   #  'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
+                   # 'edge_count', 'vertex_count',  'edge_length',
+                   # 'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
                    # 'block_perimeter', 'block_area', 'block_aspect',
-                   #  'transport_ratio', 'betweenness_centrality', # betweenness must follow transport_ratio!
+                   # slow ones:
+                   # 'transport_ratio',
+                   #'betweenness_centrality',
+                    'pagerank', 'dual_pagerank'
+
                    ]
 
     all_city_stats = {}
@@ -289,7 +293,7 @@ def main():
     tab.set_fontsize(8)
     for i in range (len (npz_file_names)):
         #tab[(0, i)].get_text().set_color(COLORS[i])
-        tab[(0, i)].set_facecolor(COLORS[i])
+        tab[(0, i)].set_facecolor(COLORS[i%(len(COLORS))])
 
     subplot_pos = 0
     for idx, m in enumerate(metric_fns):

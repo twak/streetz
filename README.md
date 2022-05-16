@@ -5,9 +5,9 @@ instructions:
 * Create a folder in root called `npz` your data. Number of files is limited by number colors.
 * Run `stats.py`. Runtime is about 2mins per graph. The output figure is created using `plt.show()`.
 * Edit `COLORS` in `utils.py` to adjust coloring
-* Edit the `metric_fns` array in `stats.py` at around line 229 to control which statistics are run. The graphs function (transport ration, betweenness, & pagerank) are the slow ones.
-* Latex formatted table is written to `table.tex` in the npz folder.
-
+* Edit the `metric_fns` array in `stats.py` at around line `229` to control which statistics are run. The graphs function (transport ration, betweenness, & pagerank) are the slow ones.
+* Latex formatted table is written to `table.tex` in the root folder.
+* `SAMPLES` in `stats_graph.py` controls the number of shortest paths calculated for transport ratio and betweenness
 
 Implementation notes:
 * a segment is a maximum sequence of adjacent edges between vertices which have a valency != 2 (i.e., segments can bend 90 degrees, as long as they don't go through junctions).
@@ -20,14 +20,17 @@ We don't process holes, so a loop inside a block counts as an overlapping block.
   * The aspect ratio of a block is found by finding the smallest rectangle which covers all vertices. The aspect ratio of the rectangle's height/width is reported.
 * Rectangularness is the ratio of the true block area to the smallest rectangle. A value of 1 means all blocks are rectangular.
 * Transport ratio is calculated between two vertices and is the ratio of the shortest path length to euclidean distance. It is slow to compute the true value, so we sample random vertex pairs. Values seem to converge at around 300 iterations…but smoother graphs with higher values.
+  * Random walks are between two randomly selected nodes. Evaluated stochastically
+* Betweenness-centrality measures the number of times that each vertex is visited on shortest paths between all combinations of start and end nodes. Again for speed purposes, this is sampled stochastically.
+  https://networkx.org/documentation/stable/reference/algorithms/centrality.html
+  * Maximum Betweenness Centrality measures the share of shortest paths which pass through the network's most important node. Again, stochastic.
+* Pagerank
+  * intended to measure integration of streets
+  * google/lary page's algorithm on topology only (i.e., ignoring street lengths)
+  * Pagerank dual is initiated distance using a graph-dual. This allows us to put distance in vertices. 
 
 In progress:
-  * Betweenness-centrality measures the number of times that each vertex is visited on shortest paths between all combinations of start and end nodes. Again for speed purposes, this is sampled stochastically while building the transport ratio.
-  https://networkx.org/documentation/stable/reference/algorithms/centrality.html
   * normalise "number of ###' as a density using land-area fraction
-  * Pagerank
-    * topology only on vertices
-    * weighted by distance using graph-dual on 
   * Density as above
   * Graphs for the above where it makes sense
   * references
