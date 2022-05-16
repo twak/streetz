@@ -2,6 +2,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from math import floor
+
+import utils
 from utils import l2, COLORS
 
 from fast_plot import FastPlot
@@ -18,24 +20,23 @@ class VertexMap ():
         s.v = vertices
         s.e = edges
 
-        for v in vertices:
-            key = v.tobytes()
-            s.v2e[key] = []
+        for v in range(len ( vertices) ):
+            s.v2e[v] = []
 
         for e in edges:
-            sk = vertices[e[0]].tobytes()
-            ek = vertices[e[1]].tobytes()
+            # sk = vertices[e[0]].tobytes()
+            # ek = vertices[e[1]].tobytes()
 
-            s.v2e[sk].append( e )
-            s.v2e[ek].append( e )
+            s.v2e[e[0]].append( e )
+            s.v2e[e[1]].append( e )
 
     def is_jn(s,v_idx):
-        return len(s.v2e[s.v[v_idx].tobytes()]) != 2
+        return len(s.v2e[ v_idx]) != 2
 
     def get_other_edge(s,e1_, v_idx):  # get the other street of hte street from the vertex
 
         e1 = np.array(e1_)
-        for e2 in s.v2e[s.v[v_idx].tobytes()]:
+        for e2 in s.v2e[ v_idx ]:
             if not np.array_equal(e2, e1):
                 return e2
 
@@ -53,7 +54,7 @@ class VertexMap ():
     def get_other_pts(s, next_v):
 
         out = []
-        for e in s.v2e[ s.v[next_v].tobytes() ]:
+        for e in s.v2e[ next_v ]:
 
             if e[0] == next_v:
                 out.append(e[1])
@@ -208,7 +209,7 @@ def plot_segment_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0,
         plt.ylabel("Proportion")
         plt.xlabel("Segment length (m)")
 
-        plt.bar(x_pos + idx* (1/float(len (all_city_stat)+1)), r,1. / (len (all_city_stat)+1), color=COLORS[idx] )
+        utils.plot(r, plt, bins, idx, all_city_stat)
 
         x_pos = x_pos[::2]
         x_lab = x_lab[::2]
@@ -262,7 +263,7 @@ def segment_circuity ( vertices, edges, table_data, table_row_names, minn=1, max
 def plot_segment_circuity(all_city_stat, name, fig, subplots, subplot_idx,  minn=1, maxx=2, bins = 32, norm = True ):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
-    axs.title.set_text("Segment Circuity (for values > 1.02)")
+    axs.title.set_text("Segment Circuity (> 1.02)")
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)
@@ -271,10 +272,10 @@ def plot_segment_circuity(all_city_stat, name, fig, subplots, subplot_idx,  minn
         plt.ylabel("Proportion")
         plt.xlabel("Segment circuity ratio")
 
-        plt.bar(x_pos + idx* (1/float(len (all_city_stat))), r,1. / len (all_city_stat), color=COLORS[idx] )
+        utils.plot(r, plt, bins, idx, all_city_stat)
 
-        x_pos = x_pos[::5]
-        x_lab = x_lab[::5]
+        x_pos = x_pos[::4]
+        x_lab = x_lab[::4]
 
         x_lab = ["%.2f" % y for y in x_lab]
         x_lab[len(x_lab)-1] = "> %.2f" % maxx

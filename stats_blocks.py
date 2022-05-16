@@ -106,7 +106,7 @@ def reset_block_cache():
     BLOCK_AREA = None
 
 
-def block_perimeter( vertices, edges, table_data, table_row_names, minn=0, maxx=2000, bins = 64, norm = True ):
+def block_perimeter( vertices, edges, table_data, table_row_names, minn=0, maxx=2000, bins = 32, norm = True ):
 
     out = np.zeros((bins), dtype=np.int)
 
@@ -150,7 +150,7 @@ def block_perimeter( vertices, edges, table_data, table_row_names, minn=0, maxx=
 
     return out
 
-def plot_block_perimeter (all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=2000, bins = 64):
+def plot_block_perimeter (all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=2000, bins = 32):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text("Block Perimeter (< 2,000m)")
@@ -162,28 +162,34 @@ def plot_block_perimeter (all_city_stat, name, fig, subplots, subplot_idx, minn=
         plt.ylabel("Proportion")
         plt.xlabel("Block perimeter length (m)")
 
-        plt.bar(x_pos + idx* (1/float(len (all_city_stat)+1)), r,1. / (len (all_city_stat)+1), color=COLORS[idx] )
+        utils.plot(r, plt, bins, idx, all_city_stat)
 
-        x_pos = x_pos[::5]
-        x_lab = x_lab[::5]
+        x_pos = x_pos[::4]
+        x_lab = x_lab[::4]
 
         # x_lab[len(x_lab)-1] = "> %d" % maxx
         # x_pos[len(x_pos)-1] = bins -1
 
         plt.xticks(x_pos, x_lab)
 
-def block_area ( vertices, edges, table_data, table_row_names, minn=0, maxx=30000, bins = 64, norm = True ):
+def block_area ( vertices, edges, table_data, table_row_names, minn=0, maxx=30000, bins = 32, norm = True ):
 
     out = np.zeros((bins), dtype=np.int)
 
     blocks = build_blocks(vertices, edges)
     areas = get_block_areas()
 
-    total = 0
+    total = 0.
+    count = 0
 
     for b_idx, pts in enumerate ( blocks ):
 
         area = areas[b_idx]
+
+        if area < 1:
+            continue
+
+        count += 1
         total += area
 
         if area < 30000:
@@ -194,22 +200,22 @@ def block_area ( vertices, edges, table_data, table_row_names, minn=0, maxx=3000
     table_row_names.append("Mean block area (m^2)")
 
     if len (blocks) > 0:
-        table_data.append("%.2f" % (total / float(len(blocks))))
+        table_data.append("%.2f" % (total / len(blocks)))
     else:
         table_data.append("-")
 
 
     if norm:
-        out = out / float ( len (blocks) )
+        out = out / float ( len(blocks) )
 
     #FastPlot(2048, 2048, vertices, edges, scale=0.1, edge_cols = np.array(edge_cols) ).run()
 
     return out
 
-def plot_block_area (all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=30000, bins = 64):
+def plot_block_area (all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=30000, bins = 32):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
-    axs.title.set_text("Block Area (<  30,000m^2)")
+    axs.title.set_text("Block Area ( 1m^2 < area <  30,000m^2)")
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)
@@ -218,17 +224,46 @@ def plot_block_area (all_city_stat, name, fig, subplots, subplot_idx, minn=0, ma
         plt.ylabel("Proportion")
         plt.xlabel("Block area (m^2)")
 
-        plt.bar(x_pos + idx* (1/float(len (all_city_stat)+1)), r,1. / (len (all_city_stat)+1), color=COLORS[idx] )
+        utils.plot(r, plt, bins, idx, all_city_stat)
 
-        x_pos = x_pos[::5]
-        x_lab = x_lab[::5]
+        x_pos = x_pos[::4]
+        x_lab = x_lab[::4]
 
         # x_lab[len(x_lab)-1] = "> %d" % maxx
         # x_pos[len(x_pos)-1] = bins -1
 
         plt.xticks(x_pos, x_lab)
 
-def block_aspect ( vertices, edges, table_data, table_row_names, minn=0.1, maxx=1.9, bins = 32, norm = True ):
+
+def bb (pts, a, b): # size of pts bounding box with axis a-> b
+
+    horz = b-a
+    horz /= np.linalg.norm(horz)
+    vert = [-horz[1], horz[0]]
+
+    big = 10e7
+
+    min_h = big
+    max_h = -big
+    min_v = big
+    max_v = -big
+
+    for pt in pts:
+        tp = pt - a
+
+        h = tp.dot(horz)
+        v = tp.dot(vert)
+
+        min_h = min(min_h, h)
+        max_h = max(max_h, h)
+        min_v = min(min_v, v)
+        max_v = max(max_v, v)
+
+    return max_v - min_v, max_h - min_h
+
+
+
+def block_aspect ( vertices, edges, table_data, table_row_names, minn=0, maxx=1, bins = 32, norm = True ):
 
     out = np.zeros((bins), dtype=np.int)
 
@@ -254,11 +289,11 @@ def block_aspect ( vertices, edges, table_data, table_row_names, minn=0.1, maxx=
         best = 1e10
         for simplex in hull.simplices:
 
-            h, w = bb( locs, locs[simplex, 0], locs[simplex, 1] )
+            h, w = bb( locs, locs[simplex][0], locs[simplex][1] )
 
             if (h * w) < best:
-                best = h *w
-                aspect = h/w
+                best = h * w
+                aspect = min(h,w) / max(h,w)
 
         idx = floor(aspect * bins / (maxx - minn))
         idx = min(idx, bins - 1)
@@ -266,11 +301,11 @@ def block_aspect ( vertices, edges, table_data, table_row_names, minn=0.1, maxx=
 
         total += aspect
 
-        rectness = area / h * w
+        rectness = area / (h * w)
         total_rectness += rectness
 
     table_row_names.append("Mean block aspect ratio")
-    table_row_names.append("Mean block rectangularness ratio")
+    table_row_names.append("Mean block rectangularness")
 
     if len (blocks) > 0:
         table_data.append("%.2f" % (total / float(len(blocks))))
@@ -284,21 +319,27 @@ def block_aspect ( vertices, edges, table_data, table_row_names, minn=0.1, maxx=
 
     return out
 
-def plot_block_aspect (all_city_stat, name, fig, subplots, subplot_idx,minn=0.1, maxx=1.9, bins = 32):
+def plot_block_aspect (all_city_stat, name, fig, subplots, subplot_idx,minn=0, maxx=1, bins = 32):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text("Block Bounding Box Aspect Ratio")
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)
-        x_lab = list ( map (lambda x : " %d" % ((maxx-minn)*x/bins + minn), x_pos ) )
+        x_lab = list ( map (lambda x : " %.2f" % ((maxx-minn)*x/bins + minn), x_pos ) )
 
         plt.ylabel("Proportion")
         plt.xlabel("BB aspect ratio")
 
-        plt.bar(x_pos + idx* (1/float(len (all_city_stat)+1)), r,1. / (len (all_city_stat)+1), color=COLORS[idx] )
+        # plt.axvline(x= (1 * bins / (maxx-minn)), color='lightgrey')
 
-        x_pos = x_pos[::2]
-        x_lab = x_lab[::2]
+        utils.plot(r, plt, bins, idx, all_city_stat)
+
+
+        x_pos = x_pos[::4]
+        x_lab = x_lab[::4]
+
+        # x_lab[len(x_lab)-1] = "> %d" % maxx
+        # x_pos[len(x_pos)-1] = bins -1
 
         plt.xticks(x_pos, x_lab)

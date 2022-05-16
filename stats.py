@@ -66,6 +66,7 @@ def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=400, 
     return out
 
 
+
 def plot_edge_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=400, bins = 32):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
@@ -78,7 +79,7 @@ def plot_edge_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, ma
         plt.ylabel("Proportion")
         plt.xlabel("Edge length (m)")
 
-        plt.bar(x_pos + idx* (1/float(len (all_city_stat)+1)), r,1. / (len (all_city_stat)+1), color=COLORS[idx] )
+        utils.plot (r, plt, bins, idx, all_city_stat)
 
         x_pos = x_pos[::2]
         x_lab = x_lab[::2]
@@ -204,7 +205,8 @@ def plot_node_degree(all_city_stat, name, fig, subplots, subplot_idx, maxx = 6):
         plt.ylabel("Proportion")
         plt.xlabel("Node degree")
 
-        plt.bar(np.arange(maxx) + idx* (1/float(len (all_city_stat)+1)), r, width= 1. / (len (all_city_stat)+1), color=COLORS[idx])
+        cw = 1/float(len (all_city_stat) + 1 )
+        plt.bar(np.arange(maxx) + idx*cw - 0.5 + cw, r, width= 1. / (len (all_city_stat)+1), color=COLORS[idx])
 
         plt.xticks(x_pos, x_lab)
         # axis.plot( x_pos, r, 'tab:orange')
@@ -222,11 +224,9 @@ def main():
     npz_file_names = [x for x in os.listdir(input_path) if x.endswith('.npz')]
 
     metric_fns = [
-                   # 'edge_count', 'vertex_count',
-                   # 'edge_length', 'segment_length', 'edge_angle', 'node_degree',
-                   # 'segment_circuity',
-                   'block_perimeter', 'block_area',
-                   'block_aspect'
+                   'edge_count', 'vertex_count', 'edge_length',
+                    'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
+                   'block_perimeter', 'block_area', 'block_aspect'
                    ]
 
     all_city_stats = {}
@@ -239,6 +239,8 @@ def main():
     table_data = []
 
     for idx, npz in enumerate(npz_file_names):
+
+        print(f'{idx}/{len(npz_file_names)} : {npz}')
 
         reset_seg_cache()
         reset_block_cache()
@@ -255,6 +257,7 @@ def main():
         table_row_names = [] # only last iteration used!
 
         for m_idx, m in enumerate(metric_fns):
+            print(f'   {m_idx}/{len(metric_fns)} : {m}')
             all_city_stats[m].append(globals()[m](vertices, edges, td, table_row_names))
 
     #fig, axs = plt.subplots(len(metric_fns) + 1, 1)
