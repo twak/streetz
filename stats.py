@@ -154,7 +154,7 @@ def plot_edge_angle(all_city_stat, name, fig, subplots, subplot_idx, bins = 18):
         #np.arange(2 * bins) + idx * (1. / len(all_city_stat))
         # plt.xticks(x_pos[::2], x_lab[::2])
 
-def node_degree(vertices, edges, table_data, table_row_names, maxx = 6, norm = True ):
+def node_degree(vertices, edges, table_data, table_row_names, maxx = 5, norm = True ):
 
     out = np.zeros((maxx), dtype=np.int)
 
@@ -194,7 +194,7 @@ def node_degree(vertices, edges, table_data, table_row_names, maxx = 6, norm = T
 
     return out
 
-def plot_node_degree(all_city_stat, name, fig, subplots, subplot_idx, maxx = 6):
+def plot_node_degree(all_city_stat, name, fig, subplots, subplot_idx, maxx = 5):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text(name)
