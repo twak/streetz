@@ -1,7 +1,7 @@
 import math
 
 import numpy as np
-
+import builtins
 
 def l2 ( e, vertices ):
 
@@ -68,4 +68,8 @@ def write_latex_table(table_strs, npz_file_names, table_row_names, file):
         f.write('\\hline\n')
         f.write('\\end{tabular}\n')
         f.write('\\end{center}\n')
+
+def land_area_km():
+    size = builtins.MAP_SIZE_M * 0.001
+    return builtins.LAND_RATIO * size * size
 

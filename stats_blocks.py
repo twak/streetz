@@ -130,8 +130,11 @@ def block_perimeter( vertices, edges, table_data, table_row_names, minn=0, maxx=
         total = total + length
         total_edges = total_edges + len (pts)
 
-    table_data.append("%d" % len ( blocks ) )
+    table_data.append("%d" % len(blocks))
     table_row_names.append("Number of blocks")
+
+    table_data.append( "%.2f" % ( len(blocks)/ utils.land_area_km() ) )
+    table_row_names.append( "Block density (blocks/km^2)" )
 
     if len (blocks) > 0:
         table_data.append("%.2f" % (total / float(len(blocks))))

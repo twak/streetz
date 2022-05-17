@@ -1,5 +1,4 @@
-
-
+import utils
 from stats_segs import *
 from stats_blocks import *
 from stats_graph import *
@@ -8,6 +7,7 @@ import collections
 import math
 import os
 import sys
+import builtins
 
 import numpy as np
 import load_tiles_and_plot
@@ -16,23 +16,39 @@ from math import floor
 from utils import l2
 
 
-def edge_count(vertices, edges, table_data, table_row_names ):
+def land(vertices, edges, table_data, table_row_names ):
 
-    table_data.append( "%d" % len (edges) ) # mean edges at a vertex)
+    table_data.append("%.2f" % utils.land_area_km()  )  # mean edges at a vertex)
+    table_row_names.append("Land area (km^2)")
+
+def edge_count(vertices, edges, table_data, table_row_names ):
+    table_data.append("%d" % len(edges))  # mean edges at a vertex)
     table_row_names.append("Number of edges")
 
+    table_data.append("%.2f" % (len(edges) / utils.land_area_km()))  # mean edges at a vertex)
+    table_row_names.append("Edges (edges per km^2)")
+
+
 def vertex_count(vertices, edges, table_data, table_row_names ):
-    table_data.append(  "%d" % len (vertices) ) # mean edges at a vertex)
+    table_data.append("%d" % len(vertices))  # mean edges at a vertex)
     table_row_names.append("Number of vertices")
+
+    table_data.append("%.2f" % (len(vertices) / utils.land_area_km()) )   # mean edges at a vertex)
+    table_row_names.append("Vertex density (vertices per km^2)")
 
 def total_len(vertices, edges, table_data, table_row_names ):
 
-    for e in edges:
-        dist = l2(e)
-        total = total + dist
+    total = 0.
 
-    table_data.append(  "%.2f" % total ) # mean edges at a vertex)
-    table_row_names.append("Total length of streets (m)")
+    for e in edges:
+        dist = utils.l2(e, vertices)
+        total = total + dist * 0.001
+
+    table_data.append("%.2f" % total)  # mean edges at a vertex)
+    table_row_names.append("Total length of streets (km)")
+
+    table_data.append("%.2f" % (total / utils.land_area_km())) # mean edges at a vertex)
+    table_row_names.append("Edge length density (km per km^2)")
 
 
 def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=400, bins = 32, norm = True):
@@ -45,6 +61,8 @@ def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=400, 
 
         dist = l2(e, vertices)
 
+        total = total + dist
+
         dist = min(maxx, dist)
         dist = max(minn, dist)
 
@@ -52,7 +70,6 @@ def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=400, 
         idx = min(idx, bins-1)
         out[idx] = out[idx] + 1
 
-        total = total + dist
 
     table_data.append( "%.2f" % ( total / len (edges) ) ) # mean edges at a vertex)
     table_row_names.append("Mean edge length (m)")
@@ -119,7 +136,7 @@ def edge_angle(vertices, edges, table_data, table_row_names, bins = 18, norm = T
     #table_data[table_row, table_col] = np.argmax(out) * 3.141 / bins
 
     am = np.argmax(out)
-    table_data.append("%.2f" % (am * 180. / bins ) ) # mean edges at a vertex)
+    table_data.append("%d" % (am * 180. / bins ) ) # mean edges at a vertex)
     table_row_names.append("Argmax edge angle (degrees)")
 
     if norm:
@@ -214,8 +231,15 @@ def plot_node_degree(all_city_stat, name, fig, subplots, subplot_idx, maxx = 5):
         plt.xticks(x_pos, x_lab)
         # axis.plot( x_pos, r, 'tab:orange')
 
+def land_water_ratio(land_water_map):
+    water_map_range = np.max(land_water_map) - np.min(land_water_map)
+    if water_map_range == 0:
+        water_map_range = 1.0
+    land_water_map = (land_water_map - np.min(land_water_map)) / water_map_range
+    return 1-land_water_map.mean()
 
 def main(scale_to_meters = 1):
+    builtins.MAP_SIZE_M = scale_to_meters
 
     input_path = sys.argv[1]
     output_path = sys.argv[2]
@@ -227,11 +251,11 @@ def main(scale_to_meters = 1):
     npz_file_names = [x for x in os.listdir(input_path) if x.endswith('.npz')]
 
     metric_fns = [
-                   'edge_count', 'vertex_count',  'edge_length',
+                   'land', 'edge_count', 'edge_length', 'total_len', 'vertex_count',
                    'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
                    'block_perimeter', 'block_area', 'block_aspect',
                    # slow ones:
-                   'transport_ratio', 'betweenness_centrality', 'pagerank', 'pagerank_on_edges'
+                   #'transport_ratio', 'betweenness_centrality', 'pagerank', 'pagerank_on_edges'
                    ]
 
     all_city_stats = {}
@@ -258,13 +282,19 @@ def main(scale_to_meters = 1):
         vertices = np_file_content['tile_graph_v'] * scale_to_meters # distances in meters
         edges = np_file_content['tile_graph_e']
 
+
+        if 'land_and_water_map' in np_file_content:
+            builtins.LAND_RATIO = land_water_ratio( np_file_content['land_and_water_map'] )
+        else:
+            builtins.LAND_RATIO = 1 # everything is land
+
         td = []
         table_data.append(td)
         table_row_names = [] # only last iteration used!
 
         for m_idx, m in enumerate(metric_fns):
             print(f'   {m_idx}/{len(metric_fns)} : {m}')
-            all_city_stats[m].append(globals()[m](vertices, edges, td, table_row_names))
+            all_city_stats[m].append(globals()[m](vertices, edges, td, table_row_names ))
 
     #fig, axs = plt.subplots(len(metric_fns) + 1, 1)
     graph_fns = []

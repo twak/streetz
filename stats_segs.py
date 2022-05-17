@@ -180,7 +180,7 @@ def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=4
     for s_idx, s in enumerate ( segs ):
 
         length = sl[s_idx]
-        total = total + length
+        total = total + length * 0.001 # m -> km
 
         length = max (minn, min(maxx, length), length)
 
@@ -191,8 +191,14 @@ def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=4
     table_data.append( "%d" % len(segs) )
     table_row_names.append("Number of segments")
 
+    table_data.append("%.2f" % (len(segs) / utils.land_area_km()))
+    table_row_names.append("Segment density (segments per km^2)")
+
     table_data.append( "%.2f" % (total / float(len(segs)) ))
-    table_row_names.append("Mean length of segment (m)")
+    table_row_names.append("Mean length of segment (km)")
+
+    table_data.append("%.2f" % (total / utils.land_area_km()))
+    table_row_names.append("Segment length density (km per km^2)")
 
     table_data.append( "%.2f" % (len (edges) / float (len(segs))))
     table_row_names.append("Mean edges per segment")

@@ -190,7 +190,7 @@ def main():
 
         drawing.saveas( os.path.join( f'{output_path}\\{idx}.dxf' ) )
 
-        if hasattr(np_file_content, 'land_and_water_map'):
+        if 'land_and_water_map' in np_file_content:
             land_and_water = np_file_content['land_and_water_map']
         else:
             land_and_water = None
