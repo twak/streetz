@@ -1,10 +1,12 @@
 import os
 import sys
 
+import PIL
 import numpy as np
 import pyglet
 from pyglet.gl import *
 from ctypes import pointer, sizeof
+from pyglet import image
 
 # Zooming constants
 ZOOM_IN_FACTOR = 1.2
@@ -12,7 +14,7 @@ ZOOM_OUT_FACTOR = 1/ZOOM_IN_FACTOR
 
 class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/708802
 
-    def __init__(self, width, height, verts, edges, vert_cols = None, edge_cols=None,  scale = 1000, *args, **kwargs):
+    def __init__(self, width, height, verts, edges, water_map=None, draw_points=True, vert_cols = None, edge_cols=None,  scale = 1000, *args, **kwargs):
         conf = Config(sample_buffers=1,
                       samples=4,
                       depth_size=16,
@@ -33,10 +35,17 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         self.edge_cols = edge_cols
         self.scale = scale
         # self.init_gl(width, height)
+        self.water_map = water_map
+
+        self.draw_points = draw_points
+        self.renders = []
+        self.render_name = "?!"
+
+        # self.pic = image.load('magma.png')
 
     def init_gl(self, width, height):
         # Set clear color
-        glClearColor(0/255, 0/255, 0/255, 0/255)
+        glClearColor(255./255, 195./255, 72./255, 255./255)
 
         # Set antialiasing
         glEnable( GL_LINE_SMOOTH )
@@ -78,18 +87,51 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         self.vbo_line_colors = GLuint()
         glGenBuffers(1, pointer(self.vbo_line_colors))
 
-        if self.edge_cols is None:
-            self.line_color_data = (np.zeros( ( len(self.edges) * 2, 3) ) + 1).flatten()  # .astype( np.int )# np.dtype('B'))
-        else:
-            if len(self.edge_cols) == len (self.edges):
-                self.line_color_data = np.repeat ( self.edge_cols, 2, axis=0 ).flatten() # repeat for start, end of line colors
-            else:
-                self.line_color_data = self.edge_cols.flatten()
-
+        # default is white line colors
+        self.line_color_data = (np.zeros( ( len(self.edges) * 2, 3) ) + 1).flatten()  # .astype( np.int )# np.dtype('B'))
         data = (GLfloat * len(self.line_color_data))(*self.line_color_data)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo_line_colors)
         glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW)
 
+        img = np.asarray(PIL.Image.open("magma.png"), dtype=int)
+
+        tex_data = (GLubyte * img.size)(*img.astype('uint8').flatten())
+
+        img = pyglet.image.ImageData(
+            img.shape[1],
+            img.shape[0],
+            "RGBA",
+            tex_data,
+            pitch=img.shape[0] * 4 * 1
+        )
+
+        textureIDs = (pyglet.gl.GLuint * 1)()
+        glGenTextures(1, textureIDs)
+        self.key_tex_id = textureIDs[0]
+        glBindTexture(GL_TEXTURE_2D, self.key_tex_id)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (img.width), (img.height), 0, GL_RGBA, GL_UNSIGNED_BYTE, img.get_data())
+
+        if self.water_map is not None:
+            img = self.water_map
+
+            tex_data = (GLubyte * img.size)(*img.astype('uint8').flatten())
+
+            img = pyglet.image.ImageData(
+                    img.shape[0],
+                    img.shape[1],
+                    "RGBA",
+                    tex_data,
+                    pitch = img.shape[ 1 ] * 4 * 1
+                )
+            textureIDs = (pyglet.gl.GLuint * 1)()
+            glGenTextures(1, textureIDs)
+            self.water_map_id = textureIDs[0]
+            glBindTexture(GL_TEXTURE_2D, self.water_map_id)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (img.width), (img.height), 0, GL_RGBA, GL_UNSIGNED_BYTE, img.get_data())
 
         glEnableClientState(GL_VERTEX_ARRAY)
         glEnableClientState(GL_COLOR_ARRAY)
@@ -131,7 +173,18 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
             self.bottom = mouse_y_in_world - mouse_y*self.zoomed_height
             self.top    = mouse_y_in_world + (1 - mouse_y)*self.zoomed_height
 
+    def render_edge_colors(self, edge_cols, name):
+        self.edge_cols = edge_cols
+        self.render_name = name
+
     def on_draw(self):
+
+        do_capture = False
+
+        # Clear window with ClearColor
+        glClear( GL_COLOR_BUFFER_BIT )
+
+
         # Initialize Projection matrix
         glMatrixMode( GL_PROJECTION )
         glLoadIdentity()
@@ -142,14 +195,48 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         # Save the default modelview matrix
         glPushMatrix()
 
-        # Clear window with ClearColor
-        glClear( GL_COLOR_BUFFER_BIT )
 
         # Set orthographic projection matrix
         glOrtho( self.left, self.right, self.bottom, self.top, 1, -1 )
 
+        # land / water background
+        glEnable(GL_TEXTURE_2D)
+        glBindTexture(GL_TEXTURE_2D, self.water_map_id)
+        glBegin(GL_QUADS)
+        width  = 2000
+        glTexCoord2i(0,1 )
+        glVertex2i(-width, -width)
+        glTexCoord2i(1, 1)
+        glVertex2i(width, -width)
+        glTexCoord2i(1, 0)
+        glVertex2i(width, width)
+        glTexCoord2i(0, 0)
+        glVertex2i(-width, width)
+        glEnd()
+        glDisable(GL_TEXTURE_2D)
+
         glColor3f(1., 1., 1.)
         glPointSize( 2000 / self.zoomed_width)
+
+        if self.edge_cols is None:
+            self.line_color_data = (np.zeros( ( len(self.edges) * 2, 3) ) + 1).flatten()  # .astype( np.int )# np.dtype('B'))
+        else:
+            self.map_min = self.edge_cols[0]
+            self.map_max = self.edge_cols[1]
+
+            cols = self.edge_cols[2]
+
+            if len(cols) == len (self.edges):
+                self.line_color_data = np.repeat (cols, 2, axis=0 ).flatten() # repeat for start, end of line colors
+            else:
+                self.line_color_data = cols.flatten()
+
+            self.edge_cols = None
+            do_capture = True
+
+            data = (GLfloat * len(self.line_color_data))(*self.line_color_data)
+            glBindBuffer(GL_ARRAY_BUFFER, self.vbo_line_colors)
+            glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW)
 
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo_lines)
         glVertexPointer(2, GL_FLOAT, 0, 0)
@@ -157,19 +244,40 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         glColorPointer(3, GL_FLOAT, 0, 0)
         glDrawArrays(GL_LINES, 0, len(self.lines_data) // 2)
 
+        if self.draw_points:
+            glBindBuffer(GL_ARRAY_BUFFER, self.vbo_point_colors)
+            glColorPointer(3, GL_FLOAT, 0, 0)
+            glBindBuffer(GL_ARRAY_BUFFER, self.vbo_points)
+            glVertexPointer(2, GL_FLOAT, 0, 0)
+            glDrawArrays(GL_POINTS, 0, len(self.points_data) // 2)
 
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_point_colors)
-        glColorPointer(3, GL_FLOAT, 0, 0)
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_points)
-        glVertexPointer(2, GL_FLOAT, 0, 0)
-        glDrawArrays(GL_POINTS, 0, len(self.points_data) // 2)
+
+        # color key
+        glEnable(GL_TEXTURE_2D)
+        glBindTexture(GL_TEXTURE_2D, self.key_tex_id)
+        glBegin(GL_QUADS)
+        ypos = -2100
+        xpos = 1600
+        glTexCoord2i(0, 0)
+        glVertex2i(xpos, ypos)
+        glTexCoord2i(1, 0)
+        glVertex2i(xpos+400, ypos)
+        glTexCoord2i(1, 1)
+        glVertex2i(xpos+400, ypos+100)
+        glTexCoord2i(0, 1)
+        glVertex2i(xpos, ypos+100)
+        glEnd()
+        glDisable(GL_TEXTURE_2D)
 
         # Remove default modelview matrix
         glPopMatrix()
-
         # global IMG_OUT
-        # ibar = pyglet.image.get_buffer_manager().get_color_buffer().get_image_data()
-        # IMG_OUT = np.asanyarray(ibar.get_data())
+
+        if do_capture:
+            ibar = pyglet.image.get_buffer_manager().get_color_buffer().get_image_data()
+            out = np.asanyarray(ibar.get_data()).reshape(self.width, self.height, 4)
+            self.renders.append((self.render_name, out))
+
         # print("quitting")
         # pyglet.app.exit()
 

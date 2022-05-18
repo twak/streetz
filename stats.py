@@ -8,6 +8,7 @@ import math
 import os
 import sys
 import builtins
+import PIL
 
 import numpy as np
 import load_tiles_and_plot
@@ -50,16 +51,36 @@ def total_len(vertices, edges, table_data, table_row_names ):
     table_data.append("%.2f" % (total / utils.land_area_km())) # mean edges at a vertex)
     table_row_names.append("Edge length density (km per km^2)")
 
+MAGMA = None
+def normalize_edges(values_per_edge):
+    global MAGMA
+
+    if MAGMA == None:
+        img = PIL.Image.open("magma.png")
+        MAGMA = np.asarray(img)/256
+        MAGMA=MAGMA[:, :, :3]
+
+    maxx = values_per_edge.max()
+    minn = values_per_edge.min()
+
+    norm = (values_per_edge - minn) / (maxx - minn)
+
+    lu = (norm * (MAGMA.shape[1] - 1)).astype(np.int)
+
+    return maxx, minn, MAGMA[0, lu]
+
 
 def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=400, bins = 32, norm = True):
 
     out = np.zeros((bins), dtype=np.int)
+    per_edge = np.zeros((len(edges)))
 
     total = 0.
 
-    for e in edges:
+    for idx, e in enumerate ( edges):
 
         dist = l2(e, vertices)
+        per_edge[idx] = dist
 
         total = total + dist
 
@@ -73,6 +94,8 @@ def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=400, 
 
     table_data.append( "%.2f" % ( total / len (edges) ) ) # mean edges at a vertex)
     table_row_names.append("Mean edge length (m)")
+
+    FastPlot(2048, 2048, vertices, edges, scale=0.1, water_map=utils.built_opengl_watermap_texture(), draw_points=False, edge_cols=normalize_edges(per_edge)).run()
 
     if norm:
         out = out / float ( len (edges) )
@@ -111,7 +134,7 @@ def plot_edge_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, ma
 
 def edge_angle(vertices, edges, table_data, table_row_names, bins = 18, norm = True ):
 
-    out = np.zeros((bins), dtype=np.int)
+    out = np.zeros ( (bins), dtype=np.int )
 
     total = 0.
 
@@ -239,6 +262,7 @@ def land_water_ratio(land_water_map):
     return 1-land_water_map.mean()
 
 def main(scale_to_meters = 1):
+
     builtins.MAP_SIZE_M = scale_to_meters
 
     input_path = sys.argv[1]
@@ -252,8 +276,8 @@ def main(scale_to_meters = 1):
 
     metric_fns = [
                    'land', 'edge_count', 'edge_length', 'total_len', 'vertex_count',
-                   'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
-                   'block_perimeter', 'block_area', 'block_aspect',
+                   # 'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
+                   # 'block_perimeter', 'block_area', 'block_aspect',
                    # slow ones:
                    #'transport_ratio', 'betweenness_centrality', 'pagerank', 'pagerank_on_edges'
                    ]
@@ -284,7 +308,8 @@ def main(scale_to_meters = 1):
 
 
         if 'land_and_water_map' in np_file_content:
-            builtins.LAND_RATIO = land_water_ratio( np_file_content['land_and_water_map'] )
+            builtins.WATER_MAP = np_file_content['land_and_water_map']
+            builtins.LAND_RATIO = land_water_ratio( builtins.WATER_MAP )
         else:
             builtins.LAND_RATIO = 1 # everything is land
 

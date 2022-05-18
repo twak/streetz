@@ -2,6 +2,7 @@ import math
 
 import numpy as np
 import builtins
+import PIL
 
 def l2 ( e, vertices ):
 
@@ -72,4 +73,19 @@ def write_latex_table(table_strs, npz_file_names, table_row_names, file):
 def land_area_km():
     size = builtins.MAP_SIZE_M * 0.001
     return builtins.LAND_RATIO * size * size
+
+WATER_LAND = None
+def built_opengl_watermap_texture(): # build an array for pyglett
+
+    global WATER_LAND
+
+    if WATER_LAND == None:
+        img = PIL.Image.open("land_water.png")
+        map = np.asarray(img, dtype=int)
+        water_map = (builtins.WATER_MAP[::4, ::4] + 1)/2
+        lu = (water_map * (map.shape[1] - 1)).astype(np.int)
+        WATER_LAND = map[0, lu]
+
+    return WATER_LAND
+
 
