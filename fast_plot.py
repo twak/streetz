@@ -1,3 +1,4 @@
+import builtins
 import os
 import sys
 
@@ -14,7 +15,7 @@ ZOOM_OUT_FACTOR = 1/ZOOM_IN_FACTOR
 
 class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/708802
 
-    def __init__(self, width, height, verts, edges, water_map=None, draw_points=True, vert_cols = None, edge_cols=None,  scale = 1000, *args, **kwargs):
+    def __init__(self, width, height, verts, edges, water_map=None, draw_points=True, vert_cols = None, edge_cols=None, render_params=None, scale = 1000, *args, **kwargs):
         conf = Config(sample_buffers=1,
                       samples=4,
                       depth_size=16,
@@ -22,13 +23,21 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         super().__init__(width, height, config=conf,*args, **kwargs)
 
         #Initialize camera values
-        self.left   = -width/2
-        self.right  = width/2
-        self.bottom = -height/2
-        self.top    = height/2
+        # self.left = -width / 2
+        # self.right = width / 2
+        # self.bottom = -height / 2
+        # self.top = height / 2
+
+        self.left = -2000
+        self.right = 2000
+        self.bottom = -2000
+        self.top = 2000
+
         self.zoom_level = 1
-        self.zoomed_width  = width
-        self.zoomed_height = height
+        # self.zoomed_width = width
+        # self.zoomed_height = height
+        self.zoomed_width = 4000
+        self.zoomed_height = 4000
         self.verts = verts
         self.edges = edges
         self.vert_cols = vert_cols
@@ -38,10 +47,17 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         self.water_map = water_map
 
         self.draw_points = draw_points
-        self.renders = []
-        self.render_name = "?!"
+        builtins.RENDERS = [] # output renders go here when done
+        self.render_name = "?!" # key/title for each render
+        self.render_params = render_params
+        self.quit_on_empty_render_params = render_params is None
+
+        pyglet.clock.schedule_interval(self.update, 1 / 30.0)
 
         # self.pic = image.load('magma.png')
+
+    def update(self, dt):
+        pass
 
     def init_gl(self, width, height):
         # Set clear color
@@ -173,13 +189,26 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
             self.bottom = mouse_y_in_world - mouse_y*self.zoomed_height
             self.top    = mouse_y_in_world + (1 - mouse_y)*self.zoomed_height
 
-    def render_edge_colors(self, edge_cols, name):
-        self.edge_cols = edge_cols
-        self.render_name = name
+    def setup_render(self, param):
+
+        print("setting up " + param["name"])
+
+        if "edge_cols" in param:
+            self.edge_cols = param["edge_cols"]
+
+        self.render_name = param["name"]
 
     def on_draw(self):
 
-        do_capture = False
+        if len(self.render_params) > 0:
+            print("priming capture %d" % len(self.render_params))
+            self.setup_render ( self.render_params.pop() )
+            do_capture = True
+            print("                %d" % len(self.render_params))
+        else:
+            do_capture = False
+            if self.quit_on_empty_render_params:
+                pyglet.window.close()
 
         # Clear window with ClearColor
         glClear( GL_COLOR_BUFFER_BIT )
@@ -256,7 +285,7 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         glEnable(GL_TEXTURE_2D)
         glBindTexture(GL_TEXTURE_2D, self.key_tex_id)
         glBegin(GL_QUADS)
-        ypos = -2100
+        ypos = -2000
         xpos = 1600
         glTexCoord2i(0, 0)
         glVertex2i(xpos, ypos)
@@ -274,9 +303,11 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         # global IMG_OUT
 
         if do_capture:
+            print("capturing")
             ibar = pyglet.image.get_buffer_manager().get_color_buffer().get_image_data()
             out = np.asanyarray(ibar.get_data()).reshape(self.width, self.height, 4)
-            self.renders.append((self.render_name, out))
+            builtins.RENDERS.append((self.render_name, out))
+            print("captured to "+ self.render_name)
 
         # print("quitting")
         # pyglet.app.exit()

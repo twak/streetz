@@ -159,7 +159,7 @@ def reset_seg_cache():
     SEG_EDGES = None
     V2E = None
 
-def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=400, bins = 32, norm = True ):
+def segment_length( vertices, edges, table_data, table_row_names, render_params, minn=0, maxx=400, bins = 32, norm = True ):
 
     out = np.zeros((bins), dtype=np.int)
 
@@ -170,12 +170,12 @@ def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=4
 
     edge_cols = np.zeros((len(edges),3))
 
-    for e_list in get_seg_by_edge():
+    per_edge = np.zeros((len(edges)))
 
-        rgb = np.random.rand(3)
+    for s_idx, e_list in enumerate ( get_seg_by_edge() ):
 
         for e in e_list:
-            edge_cols[e] = rgb
+            per_edge[e] = sl[s_idx]
 
     for s_idx, s in enumerate ( segs ):
 
@@ -187,6 +187,8 @@ def segment_length( vertices, edges, table_data, table_row_names, minn=0, maxx=4
         idx = floor(length * bins / (maxx - minn))
         idx = min(idx, bins - 1)
         out[idx] = out[idx] + 1
+
+    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Segment Length"))
 
     table_data.append( "%d" % len(segs) )
     table_row_names.append("Number of segments")
@@ -234,7 +236,7 @@ def plot_segment_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0,
 
         plt.xticks(x_pos, x_lab)
 
-def segment_circuity ( vertices, edges, table_data, table_row_names, minn=1, maxx=2, bins = 32, norm = True ):
+def segment_circuity ( vertices, edges, table_data, table_row_names, render_params, minn=1, maxx=2, bins = 32, norm = True ):
 
     out = np.zeros((bins), dtype=np.int)
 

@@ -17,12 +17,12 @@ from math import floor
 from utils import l2
 
 
-def land(vertices, edges, table_data, table_row_names ):
+def land(vertices, edges, table_data, table_row_names, render_params ):
 
     table_data.append("%.2f" % utils.land_area_km()  )  # mean edges at a vertex)
     table_row_names.append("Land area (km^2)")
 
-def edge_count(vertices, edges, table_data, table_row_names ):
+def edge_count(vertices, edges, table_data, table_row_names, render_params ):
     table_data.append("%d" % len(edges))  # mean edges at a vertex)
     table_row_names.append("Number of edges")
 
@@ -30,14 +30,14 @@ def edge_count(vertices, edges, table_data, table_row_names ):
     table_row_names.append("Edges (edges per km^2)")
 
 
-def vertex_count(vertices, edges, table_data, table_row_names ):
+def vertex_count(vertices, edges, table_data, table_row_names, render_params ):
     table_data.append("%d" % len(vertices))  # mean edges at a vertex)
     table_row_names.append("Number of vertices")
 
     table_data.append("%.2f" % (len(vertices) / utils.land_area_km()) )   # mean edges at a vertex)
     table_row_names.append("Vertex density (vertices per km^2)")
 
-def total_len(vertices, edges, table_data, table_row_names ):
+def total_len(vertices, edges, table_data, table_row_names, render_params ):
 
     total = 0.
 
@@ -51,28 +51,10 @@ def total_len(vertices, edges, table_data, table_row_names ):
     table_data.append("%.2f" % (total / utils.land_area_km())) # mean edges at a vertex)
     table_row_names.append("Edge length density (km per km^2)")
 
-MAGMA = None
-def normalize_edges(values_per_edge):
-    global MAGMA
 
-    if MAGMA == None:
-        img = PIL.Image.open("magma.png")
-        MAGMA = np.asarray(img)/256
-        MAGMA=MAGMA[:, :, :3]
+def edge_length(vertices, edges, table_data, table_row_names, render_params, minn=0, maxx=400, bins = 32, norm = True):
 
-    maxx = values_per_edge.max()
-    minn = values_per_edge.min()
-
-    norm = (values_per_edge - minn) / (maxx - minn)
-
-    lu = (norm * (MAGMA.shape[1] - 1)).astype(np.int)
-
-    return maxx, minn, MAGMA[0, lu]
-
-
-def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=400, bins = 32, norm = True):
-
-    out = np.zeros((bins), dtype=np.int)
+    out = np.zeros((bins), dtype=int)
     per_edge = np.zeros((len(edges)))
 
     total = 0.
@@ -91,11 +73,10 @@ def edge_length(vertices, edges, table_data, table_row_names, minn=0, maxx=400, 
         idx = min(idx, bins-1)
         out[idx] = out[idx] + 1
 
+    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Edge Length"))
 
     table_data.append( "%.2f" % ( total / len (edges) ) ) # mean edges at a vertex)
     table_row_names.append("Mean edge length (m)")
-
-    FastPlot(2048, 2048, vertices, edges, scale=0.1, water_map=utils.built_opengl_watermap_texture(), draw_points=False, edge_cols=normalize_edges(per_edge)).run()
 
     if norm:
         out = out / float ( len (edges) )
@@ -132,7 +113,7 @@ def plot_edge_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, ma
         #plt.xticks(x_pos[::2], x_lab[::2])
 
 
-def edge_angle(vertices, edges, table_data, table_row_names, bins = 18, norm = True ):
+def edge_angle(vertices, edges, table_data, table_row_names, render_params, bins = 18, norm = True ):
 
     out = np.zeros ( (bins), dtype=np.int )
 
@@ -194,7 +175,7 @@ def plot_edge_angle(all_city_stat, name, fig, subplots, subplot_idx, bins = 18):
         #np.arange(2 * bins) + idx * (1. / len(all_city_stat))
         # plt.xticks(x_pos[::2], x_lab[::2])
 
-def node_degree(vertices, edges, table_data, table_row_names, maxx = 5, norm = True ):
+def node_degree(vertices, edges, table_data, table_row_names, render_params, maxx = 5, norm = True ):
 
     out = np.zeros((maxx), dtype=np.int)
 
@@ -276,7 +257,7 @@ def main(scale_to_meters = 1):
 
     metric_fns = [
                    'land', 'edge_count', 'edge_length', 'total_len', 'vertex_count',
-                   # 'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
+                   'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
                    # 'block_perimeter', 'block_area', 'block_aspect',
                    # slow ones:
                    #'transport_ratio', 'betweenness_centrality', 'pagerank', 'pagerank_on_edges'
@@ -290,6 +271,8 @@ def main(scale_to_meters = 1):
 
     table_row_names = []
     table_data = []
+
+    render_params = []
 
     for idx, npz in enumerate(npz_file_names):
 
@@ -319,7 +302,7 @@ def main(scale_to_meters = 1):
 
         for m_idx, m in enumerate(metric_fns):
             print(f'   {m_idx}/{len(metric_fns)} : {m}')
-            all_city_stats[m].append(globals()[m](vertices, edges, td, table_row_names ))
+            all_city_stats[m].append(globals()[m](vertices, edges, td, table_row_names, render_params ))
 
     #fig, axs = plt.subplots(len(metric_fns) + 1, 1)
     graph_fns = []
@@ -355,6 +338,31 @@ def main(scale_to_meters = 1):
             subplot_pos = subplot_pos + 1
 
     plt.show()
+
+
+    FastPlot(2048, 2048, vertices, edges, scale=0.1, water_map=utils.built_opengl_watermap_texture(), draw_points=False, render_params= render_params).run()
+
+    renders = builtins.RENDERS
+
+    dpi = 1 / plt.rcParams['figure.dpi']  # pixel in inches
+    fig = plt.figure(figsize=(2048 * dpi, (len(renders) ) * 2048 * dpi), frameon=False)
+
+    plt.subplots_adjust(left=0., right=1., top=1., bottom=0., wspace=None, hspace=None)
+
+
+    for subplot_idx, render in enumerate ( renders ):
+        axs = plt.subplot(len(renders), 1, subplot_idx+1)
+        # axs.title.set_text(render[0])
+        axs.axis('off')
+        axs.set_xticklabels([])
+        axs.set_yticklabels([])
+        axs.imshow(render[1])
+        axs.set_xlim(0.0, 2048 * dpi)
+        axs.set_ylim(2048* dpi, 0.0 )
+    plt.tight_layout()
+
+    plt.show()
+
 
 
 

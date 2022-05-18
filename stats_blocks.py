@@ -106,7 +106,7 @@ def reset_block_cache():
     BLOCK_AREA = None
 
 
-def block_perimeter( vertices, edges, table_data, table_row_names, minn=0, maxx=2000, bins = 32, norm = True ):
+def block_perimeter( vertices, edges, table_data, table_row_names, render_params, minn=0, maxx=2000, bins = 32, norm = True ):
 
     out = np.zeros((bins), dtype=np.int)
 
@@ -177,7 +177,7 @@ def plot_block_perimeter (all_city_stat, name, fig, subplots, subplot_idx, minn=
 
         plt.xticks(x_pos, x_lab)
 
-def block_area ( vertices, edges, table_data, table_row_names, minn=0, maxx=30000, bins = 32, norm = True ):
+def block_area ( vertices, edges, table_data, table_row_names, render_params, minn=0, maxx=30000, bins = 32, norm = True ):
 
     out = np.zeros((bins), dtype=np.int)
 
@@ -270,7 +270,7 @@ def bb (pts, a, b): # size of pts bounding box with axis a-> b
 
 
 
-def block_aspect ( vertices, edges, table_data, table_row_names, minn=0, maxx=1, bins = 32, norm = True ):
+def block_aspect ( vertices, edges, table_data, table_row_names, render_params, minn=0, maxx=1, bins = 32, norm = True ):
 
     out = np.zeros((bins), dtype=np.int)
 

@@ -89,3 +89,22 @@ def built_opengl_watermap_texture(): # build an array for pyglett
     return WATER_LAND
 
 
+MAGMA = None
+def norm_and_color_map(values_per_edge):
+    global MAGMA
+
+    if MAGMA is None:
+        img = PIL.Image.open("magma.png")
+        MAGMA = np.asarray(img)/256
+        MAGMA=MAGMA[:, :, :3]
+
+    maxx = values_per_edge.max()
+    minn = values_per_edge.min()
+
+    norm = (values_per_edge - minn) / (maxx - minn)
+
+    lu = (norm * (MAGMA.shape[1] - 1)).astype(int)
+
+    return maxx, minn, MAGMA[0, lu]
+
+

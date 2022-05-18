@@ -34,7 +34,7 @@ def reset_graph_cache():
     TIMES_VISITED = None
 
 
-def transport_ratio( vertices, edges, table_data, table_row_names, minn=1, maxx=3, bins = 32, norm = True ):
+def transport_ratio( vertices, edges, table_data, table_row_names, render_params, minn=1, maxx=3, bins = 32, norm = True ):
 
     global TIMES_VISITED
 
@@ -138,7 +138,7 @@ def plot_transport_ratio(all_city_stat, name, fig, subplots, subplot_idx, minn=1
 
         plt.xticks(x_pos, x_lab)
 
-def betweenness_centrality( vertices, edges, table_data, table_row_names, minn=0, maxx=0.4, bins = 32 ):
+def betweenness_centrality( vertices, edges, table_data, table_row_names, render_params, minn=0, maxx=0.4, bins = 32 ):
 
     out = np.zeros((bins), dtype=np.int)
     g = build_graph(vertices, edges)
@@ -193,7 +193,7 @@ def betweenness_centrality( vertices, edges, table_data, table_row_names, minn=0
 #
 #         plt.xticks(x_pos, x_lab)
 
-def pagerank( vertices, edges, table_data, table_row_names, minn=0, maxx=0.0002, bins = 32, norm = True):
+def pagerank( vertices, edges, table_data, table_row_names, render_params, minn=0, maxx=0.0002, bins = 32, norm = True):
 
     out = np.zeros((bins), dtype=np.int)
     g = build_graph(vertices, edges)
@@ -253,7 +253,7 @@ def plot_pagerank(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=
         plt.xticks(x_pos, x_lab)
 
 
-def pagerank_on_edges( vertices, edges, table_data, table_row_names, minn=0, maxx=0.0002, bins = 32, norm = True):
+def pagerank_on_edges( vertices, edges, table_data, table_row_names, render_params, minn=0, maxx=0.0002, bins = 32, norm = True):
 
     out = np.zeros((bins), dtype=np.int)
 
