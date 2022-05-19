@@ -20,15 +20,15 @@ implementation notes:
   * I assume the graph is planar and edges don't cross
   * The aspect ratio of a block is found by finding the smallest rectangle which covers all vertices. The aspect ratio of the rectangle's height/width is reported.
 * Rectangularness is the ratio of the true block area to the smallest rectangle. A value of 1 means all blocks are rectangular.
-* Transport ratio is calculated between two vertices and is the ratio of the shortest path length to euclidean distance. It is slow to compute the true value, so we sample random vertex pairs. Values seem to converge at around 300 iterations…but smoother graphs with higher values.
+* Transport ratio is calculated between two vertices and is the ratio of the shortest path length to euclidean distance. It is slow to compute the true value, so we sample random vertex pairs. Values seem to converge at around 300 iterations…but smoother graphs with higher values. Render is currently poor at this number of samples: need to increase for nice maps.
 * Random walks are between two randomly selected nodes. Evaluated stochastically
 * Betweenness-centrality measures the number of times that each vertex is visited on shortest paths between all combinations of start and end nodes. Again for speed purposes, this is sampled stochastically.
   https://networkx.org/documentation/stable/reference/algorithms/centrality.html
   * Maximum Betweenness Centrality measures the share of shortest paths which pass through the network's most important node. Again, stochastic.
 * Pagerank
   * intended to measure integration of streets
-  * google/lary page's algorithm on topology only (i.e., ignoring street lengths)...so
-  * ...pagerank-on-edges uses the street edges as nodes (connected to other edges at their start and end), so we can initialize them with a p proportional to their length
+  * google/lary page's algorithm. Using a higher k of 0.95. Topology only (i.e., ignoring street lengths)...so
+  * ...pagerank-on-edges uses the street edges as nodes (connected to other edges at their start and end), so we can initialize them with a p proportional to their length. Looking at the graph, this just seems to prefer long edges (and penalized curves). Uses pagerank k of 0.95 to simulate longer "walks". Good at highlighting well connected regions.
 
 in progress:
   * normalise "number of ###' as a density using land-area fraction

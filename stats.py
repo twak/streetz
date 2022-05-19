@@ -73,7 +73,7 @@ def edge_length(vertices, edges, table_data, table_row_names, render_params, min
         idx = min(idx, bins-1)
         out[idx] = out[idx] + 1
 
-    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Edge Length"))
+    render_params.append(dict(edge_cols=utils.norm_and_color_map(np.sqrt ( per_edge )), name="Edge Length (sqrt)"))
 
     table_data.append( "%.2f" % ( total / len (edges) ) ) # mean edges at a vertex)
     table_row_names.append("Mean edge length (m)")
@@ -92,6 +92,7 @@ def plot_edge_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, ma
 
     axs.spines['top'].set_color('lightgray')
     axs.spines['right'].set_color('lightgray')
+
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)
@@ -115,27 +116,32 @@ def plot_edge_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0, ma
 
 def edge_angle(vertices, edges, table_data, table_row_names, render_params, bins = 18, norm = True ):
 
-    out = np.zeros ( (bins), dtype=np.int )
+    out = np.zeros ( (bins), dtype=float )
+    per_edge = np.zeros(len(edges))
 
     total = 0.
 
-    for e in edges:
+    for e_idx, e in enumerate ( edges ):
         a = np.array(vertices[e[0]])
         b = np.array(vertices[e[1]])
 
         d = b-a
 
-        angle = math.atan2(d[0], d[1])
+        angle = math.atan2(d[1], d[0])
         if angle < 0:
             angle += np.pi
 
-        idx = floor(angle * bins /3.141 )
+        per_edge[e_idx] = angle
+
+        idx = floor(angle * bins / 3.141 )
         idx = min(idx, bins - 1)
 
-        len = np.linalg.norm(a - b)
-        total = total + len
+        l = np.linalg.norm(a - b)
+        total = total + l
 
-        out[idx] = out[idx] + len
+        out[idx] = out[idx] + l
+
+    render_params.append(dict(edge_cols=utils.norm_and_color_map( np.minimum ( 3.141, per_edge) ), name="Edge angle"))
 
     #table_data[table_row, table_col] = np.argmax(out) * 3.141 / bins
 
@@ -242,7 +248,7 @@ def land_water_ratio(land_water_map):
     land_water_map = (land_water_map - np.min(land_water_map)) / water_map_range
     return 1-land_water_map.mean()
 
-def main(scale_to_meters = 1):
+def main(scale_to_meters = 1, do_render=False):
 
     builtins.MAP_SIZE_M = scale_to_meters
 
@@ -260,7 +266,7 @@ def main(scale_to_meters = 1):
                    'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
                    # 'block_perimeter', 'block_area', 'block_aspect',
                    # slow ones:
-                   #'transport_ratio', 'betweenness_centrality', 'pagerank', 'pagerank_on_edges'
+                   'transport_ratio', 'betweenness_centrality', 'pagerank', 'pagerank_on_edges'
                    ]
 
     all_city_stats = {}
@@ -339,29 +345,38 @@ def main(scale_to_meters = 1):
 
     plt.show()
 
+    if len(npz_file_names) == 1 and do_render:
+        try:
+            FastPlot(2048, 2048, vertices, edges, scale=0.1, water_map=utils.built_opengl_watermap_texture(), draw_points=False, render_params= render_params).run()
+        except Exception as e:
+            print ("fast plot experienced an error")
+            print (e)
 
-    FastPlot(2048, 2048, vertices, edges, scale=0.1, water_map=utils.built_opengl_watermap_texture(), draw_points=False, render_params= render_params).run()
+        renders = builtins.RENDERS
 
-    renders = builtins.RENDERS
+        os.makedirs("big_maps", exist_ok=True)
+        for render in renders:
+            PIL.Image.fromarray(render[1]).save("big_maps/"+ npz_file_names[0]+"_"+render[0]+".png")
 
-    dpi = 1 / plt.rcParams['figure.dpi']  # pixel in inches
-    fig = plt.figure(figsize=(2048 * dpi, (len(renders) ) * 2048 * dpi), frameon=False)
+        if False:
 
-    plt.subplots_adjust(left=0., right=1., top=1., bottom=0., wspace=None, hspace=None)
+            dpi = 1 / plt.rcParams['figure.dpi']  # pixel in inches
+            fig = plt.figure(figsize=((2048 + 50) * dpi, (len(renders) ) * (2048 + 45) * dpi), frameon=False)
 
+            plt.subplots_adjust(left=0., right=1., top=1., bottom=0., wspace=None, hspace=None)
+            plt.tight_layout()
 
-    for subplot_idx, render in enumerate ( renders ):
-        axs = plt.subplot(len(renders), 1, subplot_idx+1)
-        # axs.title.set_text(render[0])
-        axs.axis('off')
-        axs.set_xticklabels([])
-        axs.set_yticklabels([])
-        axs.imshow(render[1])
-        axs.set_xlim(0.0, 2048 * dpi)
-        axs.set_ylim(2048* dpi, 0.0 )
-    plt.tight_layout()
+            for subplot_idx, render in enumerate ( renders ):
+                axs = plt.subplot(len(renders), 1, subplot_idx+1)
+                axs.title.set_text(render[0])
+                axs.axis('off')
+                axs.set_xticklabels([])
+                axs.set_yticklabels([])
+                axs.imshow(render[1], interpolation="nearest")
+                axs.set_xlim(0.0, 2048 )
+                axs.set_ylim(2048, 0.0 )
 
-    plt.show()
+            plt.show()
 
 
 
@@ -375,7 +390,7 @@ if __name__ == '__main__':
 
     # dxf_to_npz("C:\\Users\\twak\\Documents\\CityEngine\\Default Workspace\\datatest\\data\\dxf_streets_1.dxf", 20000, "test.npz")
 
-    main(scale_to_meters=20000)
+    main(scale_to_meters=20000, do_render=True)
 
 
 

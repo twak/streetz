@@ -50,7 +50,7 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         builtins.RENDERS = [] # output renders go here when done
         self.render_name = "?!" # key/title for each render
         self.render_params = render_params
-        self.quit_on_empty_render_params = render_params is None
+        self.quit_on_empty_render_params = render_params is not None
 
         pyglet.clock.schedule_interval(self.update, 1 / 30.0)
 
@@ -207,8 +207,9 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
             print("                %d" % len(self.render_params))
         else:
             do_capture = False
-            if self.quit_on_empty_render_params:
-                pyglet.window.close()
+            self.close()
+            # if self.quit_on_empty_render_params:
+            #     pyglet.window.close()
 
         # Clear window with ClearColor
         glClear( GL_COLOR_BUFFER_BIT )

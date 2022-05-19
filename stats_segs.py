@@ -17,12 +17,13 @@ class VertexMap ():
 
     def __init__(s, vertices, edges):
         s.v2e = {}
-        # s.v2ei = {}
+        s.v2ei = {}
         s.v = vertices
         s.e = edges
 
         for v in range(len ( vertices) ):
-            s.v2e[v] = []
+            s.v2e [v] = []
+            s.v2ei[v] = []
 
         for idx, e in enumerate(edges):
             # sk = vertices[e[0]].tobytes()
@@ -31,8 +32,8 @@ class VertexMap ():
             s.v2e[e[0]].append(e)
             s.v2e[e[1]].append(e)
 
-            # s.v2e[e[0]].append(idx)
-            # s.v2e[e[1]].append(idx)
+            s.v2ei[e[0]].append(idx)
+            s.v2ei[e[1]].append(idx)
 
     def is_jn(s,v_idx):
         return len(s.v2e[ v_idx]) != 2
@@ -168,8 +169,6 @@ def segment_length( vertices, edges, table_data, table_row_names, render_params,
 
     total = 0.
 
-    edge_cols = np.zeros((len(edges),3))
-
     per_edge = np.zeros((len(edges)))
 
     for s_idx, e_list in enumerate ( get_seg_by_edge() ):
@@ -188,7 +187,7 @@ def segment_length( vertices, edges, table_data, table_row_names, render_params,
         idx = min(idx, bins - 1)
         out[idx] = out[idx] + 1
 
-    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Segment Length"))
+    render_params.append(dict(edge_cols=utils.norm_and_color_map( np.sqrt ( per_edge ) ), name="Segment Length (sqrt)"))
 
     table_data.append( "%d" % len(segs) )
     table_row_names.append("Number of segments")
@@ -208,7 +207,6 @@ def segment_length( vertices, edges, table_data, table_row_names, render_params,
     if norm:
         out = out / float ( len (segs) )
 
-    # FastPlot(2048, 2048, vertices, edges, scale=0.1, edge_cols = np.array(edge_cols) ).run()
 
     return out
 
@@ -239,6 +237,7 @@ def plot_segment_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0,
 def segment_circuity ( vertices, edges, table_data, table_row_names, render_params, minn=1, maxx=2, bins = 32, norm = True ):
 
     out = np.zeros((bins), dtype=np.int)
+    per_edge = np.zeros((len(edges)), dtype=np.int)
 
     segs = build_segs(vertices, edges)
     sl = get_seg_lengths()
@@ -246,6 +245,7 @@ def segment_circuity ( vertices, edges, table_data, table_row_names, render_para
     total = 0.
     count = 0
 
+    si = get_seg_by_edge()
     for seg_idx, s in enumerate ( segs ):
 
         euclid = np.linalg.norm(vertices[s[0]] - vertices[ s[len(s)-1] ] )
@@ -262,17 +262,26 @@ def segment_circuity ( vertices, edges, table_data, table_row_names, render_para
             continue
 
         ratio = max(minn, min(maxx, ratio), ratio)
+        for e in si[seg_idx]:
+            per_edge[e] = ratio
 
         idx = floor( (ratio-minn) * bins / (maxx - minn))
         idx = min(idx, bins - 1)
         out[idx] = out[idx] + 1
         count = count + 1
 
+    for s_idx, e_list in enumerate ( get_seg_by_edge() ):
+
+        for e in e_list:
+            per_edge[e] = sl[s_idx]
+
     table_data.append("%.4f" % (total / len(segs)))
     table_row_names.append("Mean segment circuity")
 
     if norm:
         out = out / float (count)
+
+    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Segment circuity"))
 
     return out
 

@@ -11,8 +11,18 @@ from math import floor
 
 import random
 
+def add_vertex_to_double_edge_array(bc, edges, i, per_edge, v2e):
+    for idx_e in v2e.v2ei[i]:
+        edge = edges[idx_e]
+        for v2_idx in edge:
+            if edge[0] == v2_idx:
+                per_edge[idx_e * 2] = bc
+            elif edge[1] == v2_idx:
+                per_edge[idx_e * 2 + 1] = bc
+
+
 GRAPH = None
-SAMPLES = 300
+SAMPLES = 1000
 
 def build_graph(vertices, edges):
     global GRAPH
@@ -41,6 +51,9 @@ def transport_ratio( vertices, edges, table_data, table_row_names, render_params
     out = np.zeros((bins), dtype=np.int)
     g = build_graph(vertices, edges)
 
+    per_edge = np.zeros((len(edges)*2))
+    v2e = build_V2E(vertices, edges)
+
     count = 0
     total = 0.
     total_steps = 0
@@ -61,7 +74,7 @@ def transport_ratio( vertices, edges, table_data, table_row_names, render_params
                 path_steps = nx.shortest_path(g, a, b, weight='length')
                 for pi in range(len(path_steps) - 1):
                     path_length += l2p(path_steps[pi], path_steps[pi + 1], vertices)
-                    TIMES_VISITED[path_steps[pi]] = TIMES_VISITED[path_steps[pi]] + 1
+                    TIMES_VISITED[path_steps[pi]] += 1
                 path_steps = len (path_steps)
 
             except nx.exception.NetworkXNoPath:
@@ -107,6 +120,11 @@ def transport_ratio( vertices, edges, table_data, table_row_names, render_params
     table_row_names.append(f"Mean length of random walk (m) (n={SAMPLES})")
     table_data.append(("%.2f" % (total_length / count)))
 
+    for i in range(len ( vertices) ):
+        add_vertex_to_double_edge_array(TIMES_VISITED[i], edges, i, per_edge,v2e)
+
+    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Vists on random walk"))
+
     if norm:
         out = out / float ( count )
 
@@ -143,6 +161,9 @@ def betweenness_centrality( vertices, edges, table_data, table_row_names, render
     out = np.zeros((bins), dtype=np.int)
     g = build_graph(vertices, edges)
 
+    per_edge = np.zeros((len(edges)*2))
+    v2e = build_V2E(vertices, edges)
+
     print ("      starting betweenness_centrality...")
     p = nx.betweenness_centrality(g, k=min(SAMPLES, len(vertices)) )
     print ("      ...done")
@@ -158,11 +179,15 @@ def betweenness_centrality( vertices, edges, table_data, table_row_names, render
         max_bc = max(max_bc, bc)
         total += bc
 
+        add_vertex_to_double_edge_array(bc, edges, i, per_edge, v2e)
+
     table_data.append("%.4f" % (total / float(len(vertices)) ))  # mean edges at a vertex)
     table_row_names.append(f"Mean betweenness centrality (n={SAMPLES})")
 
     table_data.append("%.4f" % max_bc )
     table_row_names.append(f"Maximum betweenness centrality (n={SAMPLES})")
+
+    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Betweenness_centrality"))
 
     return out
 
@@ -198,8 +223,11 @@ def pagerank( vertices, edges, table_data, table_row_names, render_params, minn=
     out = np.zeros((bins), dtype=np.int)
     g = build_graph(vertices, edges)
 
+    per_edge = np.zeros((len(edges)*2))
+    v2e = build_V2E(vertices, edges)
+
     print ("      starting pagerank...")
-    p = nx.pagerank(g, tol=1e-6 ) # , weight='length') - weight as length doesn't make sense - more transfer down longer roads?
+    p = nx.pagerank(g, tol=1e-6, alpha=0.95 ) # , weight='length') - weight as length doesn't make sense - more transfer down longer roads?
     print ("      ...done")
 
     total = 0
@@ -214,6 +242,10 @@ def pagerank( vertices, edges, table_data, table_row_names, render_params, minn=
         max_pr = max(max_pr, pr)
         min_pr = max(min_pr, pr)
         total += pr
+
+        add_vertex_to_double_edge_array(pr, edges, i, per_edge, v2e)
+
+    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Pagerank"))
 
     table_data.append("%.6f" % (total / float(len(vertices))))  # mean edges at a vertex)
     table_row_names.append(f"Mean pagerank")
@@ -276,14 +308,16 @@ def pagerank_on_edges( vertices, edges, table_data, table_row_names, render_para
                     d.add_edge(str(e), str(e2))
 
     print ("      starting pagerank...")
-    p = nx.pagerank(d, max_iter = 1000, tol=1e-8, personalization=personalization)
+    p = nx.pagerank(d, max_iter = 1000, tol=1e-8, alpha=0.95, personalization=personalization)
     print ("      ...done")
 
     total = 0
     max_pr = -1
     min_pr = 1e100
 
-    for e in edges:
+    per_edge = np.zeros((len(edges)))
+
+    for e_idx, e in enumerate (edges):
         pr = p[str(e)]
         idx = floor( ( pr -minn) * bins / (maxx - minn))
         idx = min(idx, bins - 1)
@@ -291,6 +325,9 @@ def pagerank_on_edges( vertices, edges, table_data, table_row_names, render_para
         max_pr = max(max_pr, pr)
         min_pr = min(min_pr, pr)
         total += pr
+        per_edge[e_idx] = pr
+
+    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Pagerank-by-edge (k=0.95)"))
 
     table_data.append("%.6f" % (total / float(len(vertices))))  # mean edges at a vertex)
     table_row_names.append(f"Mean pagerank-by-edge")
