@@ -23,13 +23,35 @@ def angle(ai, bi, ci, vertices):
     b = vertices[bi]
     c = vertices[ci]
 
-    return math.atan2(c[1] - a[1], c[0] - a[0]) - math.atan2(b[1] - a[1], b[0] - a[0]) #https://stackoverflow.com/a/31334882/708802
+    x = b-a
+    y = c-b
+
+    dot = x[0] * x[1] + y[0] * y[1]  # dot product between [x1, y1] and [x2, y2]
+    det = x[0] * y[1] - y[0] * x[1]  # determinant
+    out = math.atan2(det, dot)  # atan2(y, x) or atan2(sin, cos) https://stackoverflow.com/a/16544330/708802
+    if out < 0:
+        out = np.pi *2 + out
+
+    return out
+
+    # return math.atan2(c[1] - a[1], c[0] - a[0]) - math.atan2(b[1] - a[1], b[0] - a[0]) #https://stackoverflow.com/a/31334882/708802
 
 def area (ai, bi, ci, vertices):
 
     a = vertices[ai]
     b = vertices[bi]
     c = vertices[ci]
+
+    # x = b-a
+    # y = c-b
+    #
+    # dot = x[0] * x[1] + y[0] * y[1]  # dot product between [x1, y1] and [x2, y2]
+    # det = x[0] * y[1] - y[0] * x[1]  # determinant
+    # out = math.atan2(det, dot)  # atan2(y, x) or atan2(sin, cos) https://stackoverflow.com/a/16544330/708802
+    # if out < 0:
+    #     out = np.pi *2 + out
+    #
+    # return out
 
     return 0.5 * ( (b[0]-a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]) ) # https://math.stackexchange.com/a/1414021
 
@@ -79,10 +101,18 @@ def built_opengl_watermap_texture(): # build an array for pyglett
 
     global WATER_LAND
 
+
+
+
     if WATER_LAND == None:
         img = PIL.Image.open("land_water.png")
         map = np.asarray(img, dtype=int)
-        water_map = (builtins.WATER_MAP[::4, ::4] + 1)/2
+
+        if not hasattr(builtins, "WATER_MAP"):
+            water_map = np.zeros((512,512,3))
+            water_map [:,:] = [0,0,0]
+        else:
+            water_map = (builtins.WATER_MAP[::4, ::4] + 1)/2
         lu = (water_map * (map.shape[1] - 1)).astype(np.int)
         WATER_LAND = map[0, lu]
 
@@ -101,7 +131,10 @@ def norm_and_color_map(values_per_edge):
     maxx = values_per_edge.max()
     minn = values_per_edge.min()
 
-    norm = (values_per_edge - minn) / (maxx - minn)
+    if maxx != minn:
+        norm = (values_per_edge - minn) / (maxx - minn)
+    else:
+        norm = np.ones_like(values_per_edge)
 
     lu = (norm * (MAGMA.shape[1] - 1)).astype(int)
 

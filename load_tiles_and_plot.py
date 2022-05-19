@@ -205,6 +205,7 @@ if __name__ == '__main__':
     # Output Directory to save the images
     sys.argv.append(r'npz\img')
 
-    dxf_to_npz("C:\\Users\\twak\\Documents\\CityEngine\\Default Workspace\\datatest\\data\\three_to_two_rect.dxf", 20000, "seg.npz")
+
+    dxf_to_npz("C:\\Users\\twak\\Documents\\CityEngine\\Default Workspace\\datatest\\data\\dxf_streets_10.dxf", 20000, "four_blocks.npz")
 
     #main()

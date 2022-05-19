@@ -262,11 +262,11 @@ def main(scale_to_meters = 1, do_render=False):
     npz_file_names = [x for x in os.listdir(input_path) if x.endswith('.npz')]
 
     metric_fns = [
-                   'land', 'edge_count', 'edge_length', 'total_len', 'vertex_count',
-                   'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
-                   # 'block_perimeter', 'block_area', 'block_aspect',
+                   # 'land', 'edge_count', 'edge_length', 'total_len', 'vertex_count',
+                   # 'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
+                   'block_perimeter', 'block_area', 'block_aspect',
                    # slow ones:
-                   'transport_ratio', 'betweenness_centrality', 'pagerank', 'pagerank_on_edges'
+                   # 'transport_ratio' , 'betweenness_centrality', 'pagerank', 'pagerank_on_edges'
                    ]
 
     all_city_stats = {}
@@ -346,11 +346,11 @@ def main(scale_to_meters = 1, do_render=False):
     plt.show()
 
     if len(npz_file_names) == 1 and do_render:
-        try:
-            FastPlot(2048, 2048, vertices, edges, scale=0.1, water_map=utils.built_opengl_watermap_texture(), draw_points=False, render_params= render_params).run()
-        except Exception as e:
-            print ("fast plot experienced an error")
-            print (e)
+        # try:
+        FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False, render_params= render_params).run()
+        # except Exception as e:
+        #     print ("fast plot experienced an error")
+        #     print (e)
 
         renders = builtins.RENDERS
 
@@ -358,7 +358,7 @@ def main(scale_to_meters = 1, do_render=False):
         for render in renders:
             PIL.Image.fromarray(render[1]).save("big_maps/"+ npz_file_names[0]+"_"+render[0]+".png")
 
-        if False:
+        if False: # show as massive matplot lib figure. waste. of. keystrokes.
 
             dpi = 1 / plt.rcParams['figure.dpi']  # pixel in inches
             fig = plt.figure(figsize=((2048 + 50) * dpi, (len(renders) ) * (2048 + 45) * dpi), frameon=False)

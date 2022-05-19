@@ -20,7 +20,6 @@ def build_blocks(vertices, edges):
 
     global BLOCKS, BLOCK_EDGES, BLOCK_AREA
 
-
     if BLOCKS == None:
 
         BLOCKS = [] # list of vertex indicies for per block
@@ -37,6 +36,8 @@ def build_blocks(vertices, edges):
 
             B = [start[0]]
 
+            print ( "start is %s " % str(vertices[start[0]]) + ", " + str(vertices[start[1]] ) )
+
             next_e = start
             next_v = start[1] # pt_idx
             prev_v = start[0]
@@ -47,39 +48,48 @@ def build_blocks(vertices, edges):
 
                 B.append(next_v)
 
-                pts = v2e.get_other_pts( next_v)
+                area += -utils.area( start[0], prev_v, next_v, vertices )
 
-                area += utils.area( start[0], prev_v, next_v, vertices )
-
+                pts = v2e.get_other_pts(next_v)
                 min = 1000
+
+                bad = False
                 for idx, p_idx in enumerate ( pts ):
                     if p_idx != prev_v and (next_v, p_idx) in remaining:
                         a = -angle ( prev_v, next_v, p_idx, vertices)
+                        # print ("anglis is %.2f " % a)
                         if a < min:
                             next_next_v = pts[ idx ]
                             min = a
 
                 if min == 1000:
-                    if (next_v, prev_v) in remaining:
+                    if (next_v, prev_v) in remaining and len(pts) == 1:
                         next_next_v = prev_v # traversing a dead-end
+                        #print ("dead end!")
                     else:
-                        raise RuntimeError("failed to find block")
+                        bad = True
 
+                if bad:
+                    break
 
                 #next_next_v = pts [ np.fromiter( map(lambda p_idx: angle ( prev_v, next_v, p_idx, vertices ), pts),  dtype=np.float).argmin() ]
 
                 prev_v = next_v
                 next_v = next_next_v
 
-                # print ("here %d" % len (remaining))
                 # if (prev_v, next_v) in remaining:
                 remaining.remove( (prev_v, next_v) )
+                print("removed edge %d  %s " % (len(remaining), str(vertices[prev_v])+", "+str(vertices[next_v]) ))
 
             # print (" blcok area is %.2f " % area)
 
-            if len(B) < 100 and area > 0:
+            # if area > 0:
+            if len(B) < 100 and area > 0 and not bad:
+                print ("adding block of area %.2f" % area)
                 BLOCKS.append(B)
                 BLOCK_AREA.append(area)
+            else:
+                print("ignoring block bad:" +str(bad))
 
     return BLOCKS
 
@@ -280,20 +290,34 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
     total = 0
     total_rectness = 0
 
+    block_centers = np.zeros((len(blocks), 2), dtype=float)
+    per_block = np.zeros((len(blocks)))
 
-    for b_idx, pts in enumerate ( blocks ):
+    for b_idx, v_ids in enumerate(blocks):
 
         area = areas[b_idx]
 
         length = 0
 
-        locs = np.zeros((len(pts), 2))
-        for idx in range(len ( pts ) ):
-            locs[idx] = vertices[pts[idx]]
+        locs = np.zeros((len(v_ids), 2))
+        bad = False
+        for idx in range(len ( v_ids ) ):
+
+            prev = vertices[v_ids[(idx+1) % len ( v_ids )]]
+            next = vertices[v_ids[idx]]
+
+            if np.linalg.norm(prev-next) < 0.001:
+                bad = True
+
+            locs[idx] = next
+
+        if bad:
+            continue # can't hull if points are too close together
 
         hull = ConvexHull(locs)
 
         best = 1e10
+
         for simplex in hull.simplices:
 
             h, w = bb( locs, locs[simplex][0], locs[simplex][1] )
@@ -301,6 +325,7 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
             if (h * w) < best:
                 best = h * w
                 aspect = min(h,w) / max(h,w)
+
 
         idx = floor(aspect * bins / (maxx - minn))
         idx = min(idx, bins - 1)
@@ -311,6 +336,14 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
         rectness = area / (h * w)
         total_rectness += rectness
 
+        cen = block_centers[b_idx]# np.array((3), dtype=float)
+        for idx in range(len(v_ids)):
+            cen = cen +  vertices[v_ids[idx]]
+
+        cen /= len(v_ids)
+        block_centers[b_idx] = cen
+        per_block    [b_idx] = aspect
+
     table_row_names.append("Mean block aspect ratio")
     table_row_names.append("Mean block rectangularness")
 
@@ -320,6 +353,8 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
     else:
         table_data.append("-")
         table_data.append("-")
+
+    render_params.append(dict( block_pts=block_centers, block_cols=utils.norm_and_color_map(per_block), name=f"Block aspect ratio"))
 
     if norm:
         out = out / float ( len (blocks) )

@@ -11,18 +11,19 @@ from math import floor
 
 import random
 
-def add_vertex_to_double_edge_array(bc, edges, i, per_edge, v2e):
-    for idx_e in v2e.v2ei[i]:
+def add_vertex_to_double_edge_array(bc, edges, idx_v, per_edge, v2e):
+    for idx_e in v2e.v2ei[idx_v]:
         edge = edges[idx_e]
-        for v2_idx in edge:
-            if edge[0] == v2_idx:
-                per_edge[idx_e * 2] = bc
-            elif edge[1] == v2_idx:
-                per_edge[idx_e * 2 + 1] = bc
+        if edge[0] == idx_v:
+            per_edge[idx_e*2] = bc
+        elif edge[1] == idx_v:
+            per_edge[idx_e*2+1 ] = bc
+        else:
+            raise RuntimeError("error in vertex index")
 
 
 GRAPH = None
-SAMPLES = 1000
+SAMPLES = 300
 
 def build_graph(vertices, edges):
     global GRAPH
@@ -123,7 +124,7 @@ def transport_ratio( vertices, edges, table_data, table_row_names, render_params
     for i in range(len ( vertices) ):
         add_vertex_to_double_edge_array(TIMES_VISITED[i], edges, i, per_edge,v2e)
 
-    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Vists on random walk"))
+    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name= f"Vertex vists on random walks (n={SAMPLES})"))
 
     if norm:
         out = out / float ( count )
@@ -187,7 +188,7 @@ def betweenness_centrality( vertices, edges, table_data, table_row_names, render
     table_data.append("%.4f" % max_bc )
     table_row_names.append(f"Maximum betweenness centrality (n={SAMPLES})")
 
-    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Betweenness_centrality"))
+    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name=f"Vertex betweenness_centrality (n={SAMPLES})"))
 
     return out
 
@@ -327,7 +328,7 @@ def pagerank_on_edges( vertices, edges, table_data, table_row_names, render_para
         total += pr
         per_edge[e_idx] = pr
 
-    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Pagerank-by-edge (k=0.95)"))
+    render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Pagerank-by-edge"))
 
     table_data.append("%.6f" % (total / float(len(vertices))))  # mean edges at a vertex)
     table_row_names.append(f"Mean pagerank-by-edge")
