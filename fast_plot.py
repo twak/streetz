@@ -50,7 +50,7 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         builtins.RENDERS = [] # output renders go here when done
         self.render_name = "?!" # key/title for each render
         self.render_params = render_params
-        self.quit_on_empty_render_params = False #render_params is not None
+        self.quit_on_empty_render_params = render_params is not None
         self.block_pts = None # we don't always know where blocks are
         self.block_cols = None
         self.draw_blocks = False

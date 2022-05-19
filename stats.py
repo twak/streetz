@@ -346,11 +346,11 @@ def main(scale_to_meters = 1, do_render=False):
     plt.show()
 
     if len(npz_file_names) == 1 and do_render:
-        # try:
-        FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False, render_params= render_params).run()
-        # except Exception as e:
-        #     print ("fast plot experienced an error")
-        #     print (e)
+        try:
+            FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False, render_params= render_params).run()
+        except Exception as e:
+            print ("fast plot experienced an error")
+            print (e)
 
         renders = builtins.RENDERS
 

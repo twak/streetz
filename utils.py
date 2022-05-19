@@ -29,8 +29,8 @@ def angle(ai, bi, ci, vertices):
     dot = x[0] * x[1] + y[0] * y[1]  # dot product between [x1, y1] and [x2, y2]
     det = x[0] * y[1] - y[0] * x[1]  # determinant
     out = math.atan2(det, dot)  # atan2(y, x) or atan2(sin, cos) https://stackoverflow.com/a/16544330/708802
-    if out < 0:
-        out = np.pi *2 + out
+    # if out < 0:
+    #     out = np.pi *2 + out
 
     return out
 

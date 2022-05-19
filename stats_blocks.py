@@ -56,8 +56,8 @@ def build_blocks(vertices, edges):
                 bad = False
                 for idx, p_idx in enumerate ( pts ):
                     if p_idx != prev_v and (next_v, p_idx) in remaining:
-                        a = -angle ( prev_v, next_v, p_idx, vertices)
-                        # print ("anglis is %.2f " % a)
+                        a = angle ( prev_v, next_v, p_idx, vertices)
+                        print ("anglis is %.2f " % a)
                         if a < min:
                             next_next_v = pts[ idx ]
                             min = a
@@ -79,7 +79,7 @@ def build_blocks(vertices, edges):
 
                 # if (prev_v, next_v) in remaining:
                 remaining.remove( (prev_v, next_v) )
-                print("removed edge %d  %s " % (len(remaining), str(vertices[prev_v])+", "+str(vertices[next_v]) ))
+                # print("removed edge %d  %s " % (len(remaining), str(vertices[prev_v])+", "+str(vertices[next_v]) ))
 
             # print (" blcok area is %.2f " % area)
 
@@ -299,17 +299,18 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
 
         length = 0
 
-        locs = np.zeros((len(v_ids), 2))
+        locs = [] # np.zeros((len(v_ids), 2))
         bad = False
+
+        prev = vertices[v_ids[len(v_ids)-1]]
+
         for idx in range(len ( v_ids ) ):
 
-            prev = vertices[v_ids[(idx+1) % len ( v_ids )]]
             next = vertices[v_ids[idx]]
 
-            if np.linalg.norm(prev-next) < 0.001:
-                bad = True
-
-            locs[idx] = next
+            if np.linalg.norm(prev-next) > 0.001:
+                locs.append(next)
+                prev = next
 
         if bad:
             continue # can't hull if points are too close together
@@ -320,7 +321,7 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
 
         for simplex in hull.simplices:
 
-            h, w = bb( locs, locs[simplex][0], locs[simplex][1] )
+            h, w = bb( locs, locs[simplex[0]], locs[simplex[1]] )
 
             if (h * w) < best:
                 best = h * w
