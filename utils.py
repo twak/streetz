@@ -143,3 +143,25 @@ def norm_and_color_map(values_per_edge):
     return maxx, minn, MAGMA[0, lu]
 
 
+CYCLIC_COLS = None
+def cyclic_color_map(values_per_edge):
+    global CYCLIC_COLS
+
+    if CYCLIC_COLS is None:
+        img = PIL.Image.open("magma_roundy_round.png")
+        CYCLIC_COLS = np.asarray(img)/256
+        CYCLIC_COLS=CYCLIC_COLS[:, :, :3]
+
+    maxx = values_per_edge.max()
+    minn = values_per_edge.min()
+
+    if maxx != minn:
+        norm = (values_per_edge - minn) / (maxx - minn)
+    else:
+        norm = np.ones_like(values_per_edge)
+
+    lu = (norm * (CYCLIC_COLS.shape[1] - 1)).astype(int)
+
+    return maxx, minn, CYCLIC_COLS[0, lu]
+
+

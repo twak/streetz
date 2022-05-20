@@ -143,7 +143,7 @@ def edge_angle(vertices, edges, table_data, table_row_names, render_params, bins
 
         out[idx] = out[idx] + l
 
-    render_params.append(dict(edge_cols=utils.norm_and_color_map( np.minimum ( 3.141, per_edge) ), name="Edge angle"))
+    render_params.append(dict(edge_cols=utils.cyclic_color_map( np.minimum ( 3.141, per_edge) ), name="Edge angle"))
 
     #table_data[table_row, table_col] = np.argmax(out) * 3.141 / bins
 
@@ -257,6 +257,7 @@ def main(scale_to_meters = 1, do_render=False):
     input_path = sys.argv[1]
     output_path = sys.argv[2]
     #plt.style.use('ggplot')
+    os.makedirs("big_maps", exist_ok=True)
 
     if not os.path.isdir(output_path):
         os.makedirs(output_path)
@@ -414,7 +415,7 @@ def main(scale_to_meters = 1, do_render=False):
     table_strs = [[ "%s" % y for y in x] for x in np.transpose(table_data)]
     metric_names = list ( map (lambda m : m.replace("_", " "), metric_fns))
 
-    utils.write_latex_table (table_strs, npz_file_names, table_row_names, 'washington_all_no_filter.tex')
+    utils.write_latex_table (table_strs, npz_file_names, table_row_names, 'big_maps/table.tex')
 
     tab = axs.table(cellText=table_strs, colLabels=npz_file_names, rowLabels=table_row_names, loc='center', cellLoc='center')
     tab.auto_set_column_width(col=list(range(len(npz_file_names))))
@@ -431,7 +432,7 @@ def main(scale_to_meters = 1, do_render=False):
             subplot_pos = subplot_pos + 1
 
     plt.rcParams['svg.fonttype'] = 'none'
-    plt.savefig("stats.svg")
+    plt.savefig("big_maps/stats.svg")
     plt.show()
 
     if len(npz_file_names) == 1 and do_render:
@@ -447,7 +448,6 @@ def main(scale_to_meters = 1, do_render=False):
 
         renders = builtins.RENDERS
 
-        os.makedirs("big_maps", exist_ok=True)
         for render in renders:
             PIL.Image.fromarray(render[1]).save("big_maps/"+ npz_file_names[0]+"_"+render[0]+".png")
 

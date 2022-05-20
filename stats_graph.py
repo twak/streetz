@@ -23,7 +23,7 @@ def add_vertex_to_double_edge_array(bc, edges, idx_v, per_edge, v2e):
 
 
 GRAPH = None
-SAMPLES = 1000
+SAMPLES = 10
 
 def build_graph(vertices, edges):
     global GRAPH

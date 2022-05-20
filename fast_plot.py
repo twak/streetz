@@ -212,7 +212,7 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
     def setup_render(self, param):
 
         self.draw_blocks = False
-        self.draw_key = True
+        # self.draw_key = True
 
         if "edge_cols" in param:
             self.edge_cols = param["edge_cols"]
@@ -301,11 +301,12 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
 
             cols = self.edge_cols
 
+            if type(cols) is tuple:
+                cols = cols[2]
+
             if len(cols) == len (self.edges):
                 self.line_color_data = np.repeat (cols, 2, axis=0 ).flatten() # repeat for start, end of line colors
             else:
-                if type(cols) is tuple:
-                    cols = cols[2]
                 self.line_color_data = cols.flatten()
 
             self.edge_cols = None
