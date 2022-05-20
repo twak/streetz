@@ -23,7 +23,7 @@ def add_vertex_to_double_edge_array(bc, edges, idx_v, per_edge, v2e):
 
 
 GRAPH = None
-SAMPLES = 10
+SAMPLES = 500
 
 def build_graph(vertices, edges):
     global GRAPH
@@ -256,7 +256,7 @@ def pagerank( vertices, edges, table_data, table_row_names, render_params, minn=
             total += pr
             count += 1
 
-        add_vertex_to_double_edge_array(pr, edges, i, per_edge, v2e)
+            add_vertex_to_double_edge_array(pr, edges, i, per_edge, v2e)
 
     render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Pagerank"))
 
