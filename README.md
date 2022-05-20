@@ -29,10 +29,7 @@ implementation notes:
   * intended to measure integration of streets
   * google/lary page's algorithm. Using a higher k of 0.95. Topology only (i.e., ignoring street lengths)...so
   * ...pagerank-on-edges uses the street edges as nodes (connected to other edges at their start and end), so we can initialize them with a p proportional to their length. Looking at the graph, this just seems to prefer long edges (and penalized curves). Uses pagerank k of 0.95 to simulate longer "walks". Good at highlighting well connected regions.
-
-in progress:
-  * normalise "number of ###' as a density using land-area fraction
-  * Graphs for the above where it makes sense
+  * The density values normalise by the land area.
   
 references:
  * https://arxiv.org/pdf/1705.02198.pdf

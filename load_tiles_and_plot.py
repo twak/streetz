@@ -96,7 +96,7 @@ def plot_land_water_map(land_water_map, axs):
 def plot(v, e, land_and_water, img_file_path):
     fig, axs = plt.subplots(1, 1, facecolor = 'black')
 
-    plot_street_graph(v, e, axs)
+    # plot_street_graph(v, e, axs)
     if land_and_water is not None:
         plot_land_water_map(land_and_water, axs)
 
@@ -107,7 +107,7 @@ def plot(v, e, land_and_water, img_file_path):
     plt.close(fig)
 
 
-def dxf_to_npz(dxf, scale, outfile):
+def dxf_to_npz(dxf, scale, outfile, water_from= None):
 
     doc = ezdxf.readfile(dxf)
     msp = doc.modelspace()
@@ -127,13 +127,23 @@ def dxf_to_npz(dxf, scale, outfile):
             pos_to_ind[pt] = i
             return i
 
+    hw2 = scale/ 2.
+
+    def oob(pt):
+
+        return pt[0] < -hw2 or pt[0] > hw2 or pt[1] < -hw2 or pt[1] > hw2
+
+
     for line in msp:
         if line.dxftype() == "LINE":
-            s =  line.dxf.start
+            s = line.dxf.start
             e = line.dxf.end
 
             si = add(s)
             ei = add(e)
+
+            if oob(s) or oob(e):
+                continue
 
             idx.append([add(s), add(e)])
 
@@ -142,19 +152,26 @@ def dxf_to_npz(dxf, scale, outfile):
 
     print(f"parsed DXF with edges {len(idx)}  pts {len(pos)}\n")
 
-    vertices = np.array( pos, dtype=np.float64)
-    edges    = np.array( idx, dtype=np.int32  )
+    vertices = np.array(pos, dtype=np.float64)
+    edges    = np.array(idx, dtype=np.int32)
+    vertices /= hw2
+
+    vertices[:, [0, 1]] = vertices[:, [1, 0]] # keep flipping axes it looks right...
+
+    params = dict(tile_graph_v=vertices, tile_graph_e=edges)
+
+    if water_from is not None:
+        params['land_and_water_map'] = np.load(water_from)['land_and_water_map']
 
     # range = max ( vertices[:, 0].max() - vertices[:, 0].min(), vertices[:, 0].max() - vertices[:, 0].min() )
 
-    vertices /= scale
 
     # print(str(vertices.shape))
     # print(str(edges.shape))
     # (10222, 3)
     # (15853, 2)
 
-    np.savez(outfile, tile_graph_v=vertices, tile_graph_e=edges)
+    np.savez(outfile, **params)
 
 def main():
     input_path = sys.argv[1]
@@ -184,8 +201,8 @@ def main():
         modelspace = drawing.modelspace()
 
         for j in range (0, edges.shape[0]):
-            start = vertices[edges[j][0]] * 20000
-            end   = vertices[edges[j][1]] * 20000
+            start = vertices[edges[j][0]] * 19567 * 0.5
+            end   = vertices[edges[j][1]] * 19567 * 0.5
             modelspace.add_line( (start[0],start[1]), (end[0], end[1]), dxfattribs={'color': 7})
 
         drawing.saveas( os.path.join( f'{output_path}\\{idx}.dxf' ) )
@@ -206,6 +223,7 @@ if __name__ == '__main__':
     sys.argv.append(r'npz\img')
 
 
-    dxf_to_npz("C:\\Users\\twak\\Documents\\CityEngine\\Default Workspace\\datatest\\data\\dxf_streets_10.dxf", 20000, "four_blocks.npz")
+    dxf_to_npz("C:\\Users\\twak\\Documents\\CityEngine\\Default Workspace\\datatest\\data\\sf.dxf", 19567,
+                "npz/sf_ce.npz", water_from='C:\\Users\\twak\\PycharmProjects\\streets2\\generated\\sanfran_generated.npz')
 
-    #main()
+    # main()

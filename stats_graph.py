@@ -23,7 +23,7 @@ def add_vertex_to_double_edge_array(bc, edges, idx_v, per_edge, v2e):
 
 
 GRAPH = None
-SAMPLES = 300
+SAMPLES = 1000
 
 def build_graph(vertices, edges):
     global GRAPH
@@ -109,10 +109,14 @@ def transport_ratio( vertices, edges, table_data, table_row_names, render_params
             print(f'    {i}/{SAMPLES}: transport ratio: {total/max(1,count)}')
             a = random.randint(0, len(vertices))
             b = random.randint(0, len(vertices))
-            compute(a,b)
 
-        table_row_names.append(f"Transport ratio (n={SAMPLES})")
+            if len ( v2e.v2e[a] )> 0  and len ( v2e.v2e[b]) > 0:
+                compute(a,b)
+            else:
+                print("skipping disconnected node")
+                continue
 
+    table_row_names.append(f"Transport ratio (n={SAMPLES})")
     table_data.append(("%.2f" % (total / count)))
 
     table_row_names.append(f"Mean steps in random walk (n={SAMPLES})")
@@ -171,18 +175,23 @@ def betweenness_centrality( vertices, edges, table_data, table_row_names, render
 
     total = 0
     max_bc = -1
+    count = 0
 
     for i in range(len(vertices)):
-        bc = p[i]
-        idx = floor( ( bc -minn) * bins / (maxx - minn))
-        idx = min(idx, bins - 1)
-        out[idx] += 1
-        max_bc = max(max_bc, bc)
-        total += bc
 
-        add_vertex_to_double_edge_array(bc, edges, i, per_edge, v2e)
+        if i in p:
 
-    table_data.append("%.4f" % (total / float(len(vertices)) ))  # mean edges at a vertex)
+            bc = p[i]
+            idx = floor( ( bc -minn) * bins / (maxx - minn))
+            idx = min(idx, bins - 1)
+            out[idx] += 1
+            max_bc = max(max_bc, bc)
+            total += bc
+            count += 1
+
+            add_vertex_to_double_edge_array(bc, edges, i, per_edge, v2e)
+
+    table_data.append("%.4f" % (total / float(count) ))  # mean edges at a vertex)
     table_row_names.append(f"Mean betweenness centrality (n={SAMPLES})")
 
     table_data.append("%.4f" % max_bc )
@@ -219,7 +228,7 @@ def betweenness_centrality( vertices, edges, table_data, table_row_names, render
 #
 #         plt.xticks(x_pos, x_lab)
 
-def pagerank( vertices, edges, table_data, table_row_names, render_params, minn=0, maxx=0.0002, bins = 32, norm = True):
+def pagerank( vertices, edges, table_data, table_row_names, render_params, minn=0, maxx=0.0001, bins = 32, norm = True):
 
     out = np.zeros((bins), dtype=np.int)
     g = build_graph(vertices, edges)
@@ -228,27 +237,30 @@ def pagerank( vertices, edges, table_data, table_row_names, render_params, minn=
     v2e = build_V2E(vertices, edges)
 
     print ("      starting pagerank...")
-    p = nx.pagerank(g, tol=1e-6, alpha=0.95 ) # , weight='length') - weight as length doesn't make sense - more transfer down longer roads?
+    p = nx.pagerank(g, tol=1e-6, alpha=0.85 ) # , weight='length') - weight as length doesn't make sense - more transfer down longer roads?
     print ("      ...done")
 
+    count = 0
     total = 0
     max_pr = -1
     min_pr = -1
 
     for i in range(len(vertices)):
-        pr = p[i]
-        idx = floor( ( pr -minn) * bins / (maxx - minn))
-        idx = min(idx, bins - 1)
-        out[idx] += 1
-        max_pr = max(max_pr, pr)
-        min_pr = max(min_pr, pr)
-        total += pr
+        if i in p:
+            pr = p[i]
+            idx = floor( ( pr -minn) * bins / (maxx - minn))
+            idx = min(idx, bins - 1)
+            out[idx] += 1
+            max_pr = max(max_pr, pr)
+            min_pr = max(min_pr, pr)
+            total += pr
+            count += 1
 
         add_vertex_to_double_edge_array(pr, edges, i, per_edge, v2e)
 
     render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Pagerank"))
 
-    table_data.append("%.6f" % (total / float(len(vertices))))  # mean edges at a vertex)
+    table_data.append("%.6f" % (total / float(count)))  # mean edges at a vertex)
     table_row_names.append(f"Mean pagerank")
 
     table_data.append("%.6f" % max_pr)
@@ -261,7 +273,7 @@ def pagerank( vertices, edges, table_data, table_row_names, render_params, minn=
 
     return out
 
-def plot_pagerank(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=0.0002, bins = 32 ):
+def plot_pagerank(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=0.0001, bins = 32 ):
 
     axs = plt.subplot(subplots, 1, subplot_idx)
     axs.title.set_text("Pagerank (topology only)")
@@ -270,7 +282,7 @@ def plot_pagerank(all_city_stat, name, fig, subplots, subplot_idx, minn=0, maxx=
 
     for idx, r in enumerate ( all_city_stat ):
         x_pos = np.arange(bins)
-        x_lab = list ( map (lambda x : " %.6f" % ((maxx-minn)*x/bins + minn), x_pos ) )
+        x_lab = list ( map (lambda x : " %.5f" % ((maxx-minn)*x/bins + minn), x_pos ) )
 
         plt.ylabel("Proportion")
         plt.xlabel("Pagerank")
@@ -315,22 +327,25 @@ def pagerank_on_edges( vertices, edges, table_data, table_row_names, render_para
     total = 0
     max_pr = -1
     min_pr = 1e100
+    count = 0
 
     per_edge = np.zeros((len(edges)))
 
     for e_idx, e in enumerate (edges):
-        pr = p[str(e)]
-        idx = floor( ( pr -minn) * bins / (maxx - minn))
-        idx = min(idx, bins - 1)
-        out[idx] += 1
-        max_pr = max(max_pr, pr)
-        min_pr = min(min_pr, pr)
-        total += pr
-        per_edge[e_idx] = pr
+        if str(e) in p:
+            pr = p[str(e)]
+            idx = floor( ( pr -minn) * bins / (maxx - minn))
+            idx = min(idx, bins - 1)
+            out[idx] += 1
+            max_pr = max(max_pr, pr)
+            min_pr = min(min_pr, pr)
+            total += pr
+            per_edge[e_idx] = pr
+            count += 1
 
     render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Pagerank-by-edge"))
 
-    table_data.append("%.6f" % (total / float(len(vertices))))  # mean edges at a vertex)
+    table_data.append("%.6f" % (total / float(count)))  # mean edges at a vertex)
     table_row_names.append(f"Mean pagerank-by-edge")
 
     table_data.append("%.6f" % max_pr)

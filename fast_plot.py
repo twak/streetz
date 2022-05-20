@@ -10,17 +10,18 @@ from ctypes import pointer, sizeof
 from pyglet import image
 
 # Zooming constants
+import utils
+
 ZOOM_IN_FACTOR = 1.2
 ZOOM_OUT_FACTOR = 1/ZOOM_IN_FACTOR
 
 class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/708802
 
-    def __init__(self, width, height, verts, edges, water_map=None, draw_verts=True, vert_cols = None, edge_cols=None, render_params=None, scale = 1000, *args, **kwargs):
+    def __init__(self, width, height, verts, edges, water_map=None, draw_verts=True, vert_cols = None, edge_cols=None, render_params=None, draw_key=False, scale = 1000, *args, **kwargs):
         conf = Config(sample_buffers=1,
                       samples=4,
                       depth_size=16,
                       double_buffer=True)
-        super().__init__(width, height, config=conf,*args, **kwargs)
 
         #Initialize camera values
         # self.left = -width / 2
@@ -48,12 +49,15 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
 
         self.draw_verts = draw_verts
         builtins.RENDERS = [] # output renders go here when done
-        self.render_name = "?!" # key/title for each render
+        self.render_name = "?!g" # key/title for each render
         self.render_params = render_params
         self.quit_on_empty_render_params = render_params is not None
         self.block_pts = None # we don't always know where blocks are
         self.block_cols = None
         self.draw_blocks = False
+        self.draw_key = draw_key
+
+        super().__init__(width, height, config=conf,*args, **kwargs)
 
         pyglet.clock.schedule_interval(self.update, 1 / 30.0)
 
@@ -111,8 +115,15 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         self.vbo_line_colors = GLuint()
         glGenBuffers(1, pointer(self.vbo_line_colors))
 
-        # default is white line colors
-        self.line_color_data = (np.zeros( ( len(self.edges) * 2, 3) ) + 0.77).flatten()  # .astype( np.int )# np.dtype('B'))
+
+        # default light grey outputs
+        self.line_color_data = (np.zeros((len(self.edges) * 2, 3)) + 0.77).flatten()  # .astype( np.int )# np.dtype('B'))
+
+        # yellow
+        # self.line_color_data = np.asarray ( [[ 255/255., 195/255., 72/255. ]] )
+        # self.line_color_data = self.line_color_data.repeat(len(self.edges) * 2, axis=0).flatten()
+
+        # self.line_color_data = (np.zeros((len(self.edges) * 2, 3)) + 0.77).flatten()  # .astype( np.int )# np.dtype('B'))
         data = (GLfloat * len(self.line_color_data))(*self.line_color_data)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo_line_colors)
         glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW)
@@ -128,6 +139,7 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
             tex_data,
             pitch=img.shape[0] * 4 * 1
         )
+
 
         textureIDs = (pyglet.gl.GLuint * 1)()
         glGenTextures(1, textureIDs)
@@ -200,11 +212,12 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
     def setup_render(self, param):
 
         self.draw_blocks = False
+        self.draw_key = True
 
         if "edge_cols" in param:
             self.edge_cols = param["edge_cols"]
         else:
-            self.edge_cols = (np.zeros( ( len(self.edges) * 2, 3) ) +  + 0.77)
+            self.edge_cols = (np.zeros( ( len(self.edges) * 2, 3) ) + 0.77)
 
         if "block_pts" in param:
             if self.block_pts is not None and len(param["block_pts"] != len(self.block_pts)):
@@ -232,13 +245,13 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
 
     def on_draw(self):
 
-        if len(self.render_params) > 0:
+        if self.render_params is not None and len(self.render_params) > 0:
             self.setup_render ( self.render_params.pop() )
             do_capture = True
         else:
             do_capture = False
             if self.quit_on_empty_render_params:
-                pyglet.close()
+                self.close()
 
         # Clear window with ClearColor
         glClear( GL_COLOR_BUFFER_BIT )
@@ -259,8 +272,13 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         glOrtho( self.left, self.right, self.bottom, self.top, 1, -1 )
 
         # land / water background
-        glEnable(GL_TEXTURE_2D)
-        glBindTexture(GL_TEXTURE_2D, self.water_map_id)
+
+        if hasattr(self, "water_map_id"):
+            glEnable(GL_TEXTURE_2D)
+            glBindTexture(GL_TEXTURE_2D, self.water_map_id)
+        else:
+            glColor3f(77/255.,77/255.,77/255.)
+
         glBegin(GL_QUADS)
         width  = 2000
         glTexCoord2i(0,1 )
@@ -272,7 +290,9 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         glTexCoord2i(0, 0)
         glVertex2i(-width, width)
         glEnd()
-        glDisable(GL_TEXTURE_2D)
+
+        if hasattr(self, "water_map_id"):
+            glDisable(GL_TEXTURE_2D)
 
         glColor3f(1., 1., 1.)
         glPointSize( 10000 / self.zoomed_width)
@@ -284,6 +304,8 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
             if len(cols) == len (self.edges):
                 self.line_color_data = np.repeat (cols, 2, axis=0 ).flatten() # repeat for start, end of line colors
             else:
+                if type(cols) is tuple:
+                    cols = cols[2]
                 self.line_color_data = cols.flatten()
 
             self.edge_cols = None
@@ -333,21 +355,23 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
             glDrawArrays(GL_POINTS, 0, self.block_number)
 
         # color key
-        glEnable(GL_TEXTURE_2D)
-        glBindTexture(GL_TEXTURE_2D, self.key_tex_id)
-        glBegin(GL_QUADS)
-        ypos = -2000
-        xpos = 1600
-        glTexCoord2i(0, 0)
-        glVertex2i(xpos, ypos)
-        glTexCoord2i(1, 0)
-        glVertex2i(xpos+400, ypos)
-        glTexCoord2i(1, 1)
-        glVertex2i(xpos+400, ypos+100)
-        glTexCoord2i(0, 1)
-        glVertex2i(xpos, ypos+100)
-        glEnd()
-        glDisable(GL_TEXTURE_2D)
+
+        if self.draw_key:
+            glEnable(GL_TEXTURE_2D)
+            glBindTexture(GL_TEXTURE_2D, self.key_tex_id)
+            glBegin(GL_QUADS)
+            ypos = -2000
+            xpos = 1600
+            glTexCoord2i(0, 0)
+            glVertex2i(xpos, ypos)
+            glTexCoord2i(1, 0)
+            glVertex2i(xpos+400, ypos)
+            glTexCoord2i(1, 1)
+            glVertex2i(xpos+400, ypos+100)
+            glTexCoord2i(0, 1)
+            glVertex2i(xpos, ypos+100)
+            glEnd()
+            glDisable(GL_TEXTURE_2D)
 
         # Remove default modelview matrix
         glPopMatrix()
@@ -356,6 +380,7 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         if do_capture:
             ibar = pyglet.image.get_buffer_manager().get_color_buffer().get_image_data()
             out = np.asanyarray(ibar.get_data()).reshape(self.width, self.height, 4)
+            #PIL.Image.fromarray(out).save("blah.png")
             builtins.RENDERS.append((self.render_name, out))
 
         # print("quitting")
@@ -382,16 +407,26 @@ def main():
 
         np_file_content = np.load(npz_path)
 
+        scale_to_meters =19567
+
         # Vertices
         vertices = np_file_content['tile_graph_v']
         edges    = np_file_content['tile_graph_e']
+
+        vertices[:, [0, 1]] = vertices[:, [1, 0]]
+        # vertices [[a,b]] = ver
+
+        if 'land_and_water_map' in np_file_content:
+            builtins.WATER_MAP = np_file_content['land_and_water_map']
+
+        vertices = vertices * scale_to_meters
 
         if hasattr(np_file_content, 'land_and_water_map'):
             land_and_water = np_file_content['land_and_water_map']
         else:
             land_and_water = None
 
-        FastPlot(2048, 2048, vertices, edges ).run()
+        FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False ).run()
         #FastPlot(2048, 2048, vertices, edges, visible=False).run()
 
         break

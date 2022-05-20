@@ -96,15 +96,16 @@ def land_area_km():
     size = builtins.MAP_SIZE_M * 0.001
     return builtins.LAND_RATIO * size * size
 
+def reset_watermap():
+    global WATER_LAND
+    WATER_LAND = None
+
 WATER_LAND = None
 def built_opengl_watermap_texture(): # build an array for pyglett
 
     global WATER_LAND
 
-
-
-
-    if WATER_LAND == None:
+    if WATER_LAND is None:
         img = PIL.Image.open("land_water.png")
         map = np.asarray(img, dtype=int)
 
@@ -112,7 +113,8 @@ def built_opengl_watermap_texture(): # build an array for pyglett
             water_map = np.zeros((512,512,3))
             water_map [:,:] = [0,0,0]
         else:
-            water_map = (builtins.WATER_MAP[::4, ::4] + 1)/2
+            water_map = (builtins.WATER_MAP[::4, ::4] + 1) / 2
+            # water_map = (builtins.WATER_MAP[::2, ::2] + 1) / 2
         lu = (water_map * (map.shape[1] - 1)).astype(np.int)
         WATER_LAND = map[0, lu]
 

@@ -1,3 +1,5 @@
+import traceback
+
 import utils
 from stats_segs import *
 from stats_blocks import *
@@ -261,12 +263,17 @@ def main(scale_to_meters = 1, do_render=False):
 
     npz_file_names = [x for x in os.listdir(input_path) if x.endswith('.npz')]
 
+    if len(npz_file_names) == 0:
+        print("no npz files found in " + input_path)
+        return
+
     metric_fns = [
-                   # 'land', 'edge_count', 'edge_length', 'total_len', 'vertex_count',
-                   # 'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
+                   'land', 'edge_count', 'edge_length', 'total_len', 'vertex_count',
+                   'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
                    'block_perimeter', 'block_area', 'block_aspect',
                    # slow ones:
-                   # 'transport_ratio' , 'betweenness_centrality', 'pagerank', 'pagerank_on_edges'
+                   'transport_ratio' , #'betweenness_centrality',
+                   'pagerank', 'pagerank_on_edges'
                    ]
 
     all_city_stats = {}
@@ -278,23 +285,86 @@ def main(scale_to_meters = 1, do_render=False):
     table_row_names = []
     table_data = []
 
-    render_params = []
+    render_all = True
+
+    if not render_all:
+        render_params = []
 
     for idx, npz in enumerate(npz_file_names):
+
+        if render_all:
+            render_params = []
 
         print(f'{idx}/{len(npz_file_names)} : {npz}')
 
         reset_seg_cache()
         reset_block_cache()
         reset_graph_cache()
+        utils.reset_watermap()
 
         npz_path = os.path.join(input_path, npz)
         np_file_content = np.load(npz_path)
 
-        # Vertices
-        vertices = np_file_content['tile_graph_v'] * scale_to_meters # distances in meters
+        #scale
+        if 'tile_width_height_mercator_meters' in np_file_content:
+            print ("overriding scale with merator value...")
+            scale_to_meters = np_file_content['tile_width_height_mercator_meters'][0]/2
+
+
+        vertices = np_file_content['tile_graph_v']
+
         edges = np_file_content['tile_graph_e']
 
+        if npz.endswith("gt.npz"):
+            new_edges=[]
+            for e in edges:
+                if e[0] == -1 or e[1] == -1:
+                    pass
+                else:
+                    new_edges.append(e)
+
+            print ("removed -1 -1 %d/%d edges " % ( len(edges) - len(new_edges), len(edges)) )
+            edges = np.array(new_edges, dtype=int)
+
+            new_verts=[]
+            for v in vertices:
+                if v[0] == -1 and v[1] == -1:
+                    pass
+                else:
+                    new_verts.append(v)
+
+            print ("removed -1 -1 %d/%d verts " % ( len(vertices) - len(new_edges), len(new_edges)) )
+            vertices = np.array(new_verts)
+
+        # edges on generated need filtering for short diagonals
+        if npz.endswith("generated.npz"):
+
+            one = 2 / 4028.
+            new_edges=[]
+
+            v2e = VertexMap(vertices, edges)
+
+            def matching_endpoints(e, v2e):
+                for ai in v2e.get_other_pts(e[1]):
+                    if ai != e[0]:
+                        for bi in v2e.get_other_pts(e[0]):
+                            if bi != e[1]:
+                                if ai == bi:
+                                    return True
+                return False
+
+            for e in edges:
+                a = vertices[e[0]]
+                b = vertices[e[1]]
+                if abs(abs(a[0] - b[0]) - one) < 1e-5 and \
+                   abs ( abs(a[1] - b[1]) - one) < 1e-5 and \
+                   matching_endpoints(e, v2e):
+                    pass
+                else:
+                    new_edges.append(e)
+
+            print ("filtered %d/%d edges " % ( len(edges) - len(new_edges), len(edges)) )
+            edges = np.array(new_edges, dtype=int)
 
         if 'land_and_water_map' in np_file_content:
             builtins.WATER_MAP = np_file_content['land_and_water_map']
@@ -302,13 +372,30 @@ def main(scale_to_meters = 1, do_render=False):
         else:
             builtins.LAND_RATIO = 1 # everything is land
 
+        vertices[:, [0, 1]] = vertices[:, [1, 0]] # flip for ever-changing convention
+        vertices = vertices * scale_to_meters  # distances in meters
+
         td = []
         table_data.append(td)
         table_row_names = [] # only last iteration used!
 
+        if render_all:
+            builtins.RENDERS = []
+
         for m_idx, m in enumerate(metric_fns):
             print(f'   {m_idx}/{len(metric_fns)} : {m}')
             all_city_stats[m].append(globals()[m](vertices, edges, td, table_row_names, render_params ))
+
+        if render_all:
+            try:
+                FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False, render_params= render_params).run()
+            except Exception as e:
+                 print ("pyglet has experienced an error. it often does.")
+                 print(traceback.format_exc())
+            renders = builtins.RENDERS
+            os.makedirs("big_maps", exist_ok=True)
+            for render in renders:
+                PIL.Image.fromarray(render[1]).save("big_maps/"+ npz + render[0]+".png")
 
     #fig, axs = plt.subplots(len(metric_fns) + 1, 1)
     graph_fns = []
@@ -327,7 +414,7 @@ def main(scale_to_meters = 1, do_render=False):
     table_strs = [[ "%s" % y for y in x] for x in np.transpose(table_data)]
     metric_names = list ( map (lambda m : m.replace("_", " "), metric_fns))
 
-    utils.write_latex_table (table_strs, npz_file_names, table_row_names, 'table.tex')
+    utils.write_latex_table (table_strs, npz_file_names, table_row_names, 'washington_all_no_filter.tex')
 
     tab = axs.table(cellText=table_strs, colLabels=npz_file_names, rowLabels=table_row_names, loc='center', cellLoc='center')
     tab.auto_set_column_width(col=list(range(len(npz_file_names))))
@@ -343,14 +430,20 @@ def main(scale_to_meters = 1, do_render=False):
             globals()[name](all_city_stats[m], metric_names[idx].title(), fig, subplot_count, subplot_pos+2)
             subplot_pos = subplot_pos + 1
 
+    plt.rcParams['svg.fonttype'] = 'none'
+    plt.savefig("stats.svg")
     plt.show()
 
     if len(npz_file_names) == 1 and do_render:
-        try:
-            FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False, render_params= render_params).run()
-        except Exception as e:
-            print ("fast plot experienced an error")
-            print (e)
+
+        if False: # render and quit
+            try:
+                FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False, render_params= render_params).run()
+            except Exception as e:
+                print ("fast plot experienced an error")
+                print (e)
+        else: # interactive
+            FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False ).run()
 
         renders = builtins.RENDERS
 
@@ -390,7 +483,7 @@ if __name__ == '__main__':
 
     # dxf_to_npz("C:\\Users\\twak\\Documents\\CityEngine\\Default Workspace\\datatest\\data\\dxf_streets_1.dxf", 20000, "test.npz")
 
-    main(scale_to_meters=20000, do_render=True)
+    main(scale_to_meters=19567, do_render=True)
 
 
 

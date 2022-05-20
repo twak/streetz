@@ -36,7 +36,7 @@ def build_blocks(vertices, edges):
 
             B = [start[0]]
 
-            print ( "start is %s " % str(vertices[start[0]]) + ", " + str(vertices[start[1]] ) )
+            # print ( "start is %s " % str(vertices[start[0]]) + ", " + str(vertices[start[1]] ) )
 
             next_e = start
             next_v = start[1] # pt_idx
@@ -57,7 +57,6 @@ def build_blocks(vertices, edges):
                 for idx, p_idx in enumerate ( pts ):
                     if p_idx != prev_v and (next_v, p_idx) in remaining:
                         a = angle ( prev_v, next_v, p_idx, vertices)
-                        print ("anglis is %.2f " % a)
                         if a < min:
                             next_next_v = pts[ idx ]
                             min = a
@@ -85,11 +84,12 @@ def build_blocks(vertices, edges):
 
             # if area > 0:
             if len(B) < 100 and area > 0 and not bad:
-                print ("adding block of area %.2f" % area)
+                # print ("adding block of area %.2f" % area)
                 BLOCKS.append(B)
                 BLOCK_AREA.append(area)
             else:
-                print("ignoring block bad:" +str(bad))
+                pass
+                # print("ignoring block bad:" +str(bad))
 
     return BLOCKS
 
@@ -287,11 +287,15 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
     blocks = build_blocks(vertices, edges)
     areas = get_block_areas()
 
+    count = 0
     total = 0
     total_rectness = 0
 
     block_centers = np.zeros((len(blocks), 2), dtype=float)
     per_block = np.zeros((len(blocks)))
+
+    total_short_edge_len = [] #np.zeros((len(blocks)))
+    total_long_edge_len = [] #np.zeros((len(blocks)))
 
     for b_idx, v_ids in enumerate(blocks):
 
@@ -318,6 +322,9 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
         hull = ConvexHull(locs)
 
         best = 1e10
+        short = -1
+        long = -1
+        count = count + 1
 
         for simplex in hull.simplices:
 
@@ -325,14 +332,23 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
 
             if (h * w) < best:
                 best = h * w
-                aspect = min(h,w) / max(h,w)
 
+                short = min(h,w)
+                long = max (h,w)
+
+                aspect = short/long
+
+        # total_short_edge_len[b_idx] = short
+        # total_long_edge_len[b_idx] = long
+        total_short_edge_len.append(short)
+        total_long_edge_len .append(long)
 
         idx = floor(aspect * bins / (maxx - minn))
         idx = min(idx, bins - 1)
         out[idx] += 1
 
         total += aspect
+        count = count + 1
 
         rectness = area / (h * w)
         total_rectness += rectness
@@ -350,12 +366,25 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
 
     if len (blocks) > 0:
         table_data.append("%.2f" % (total / float(len(blocks))))
-        table_data.append("%.2f" % (total_rectness / float(len(blocks))))
+        table_data.append("%.2f" % (total_rectness / float(count)))
     else:
         table_data.append("-")
         table_data.append("-")
 
     render_params.append(dict( block_pts=block_centers, block_cols=utils.norm_and_color_map(per_block), name=f"Block aspect ratio"))
+
+    total_long_edge_len = np.array(total_long_edge_len)
+    total_short_edge_len = np.array(total_short_edge_len)
+
+    table_row_names.append("Mean block short length")
+    table_data.append("%.2f" % (total_short_edge_len.mean()))
+    table_row_names.append("Mean block deviation short")
+    table_data.append("%.2f" % (total_short_edge_len.std()))
+
+    table_row_names.append("Mean block long length")
+    table_data.append("%.2f" % (total_long_edge_len.mean()))
+    table_row_names.append("Mean block deviation long")
+    table_data.append("%.2f" % (total_long_edge_len.std()))
 
     if norm:
         out = out / float ( len (blocks) )
