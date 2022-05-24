@@ -131,10 +131,13 @@ def edge_angle(vertices, edges, table_data, table_row_names, render_params, bins
         d = b-a
 
         angle = math.atan2(d[1], d[0])
+
+
+        per_edge[e_idx] = angle
+
         if angle < 0:
             angle += np.pi
 
-        per_edge[e_idx] = angle
 
         idx = floor(angle * bins / 3.141 )
         idx = min(idx, bins - 1)
@@ -264,9 +267,10 @@ def main(scale_to_meters = 1, interactive_render=False, render_all=False):
         return
 
     metric_fns = [
-                   'land', 'edge_count', 'edge_length', 'total_len', 'vertex_count',
-                   'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
-                   'block_perimeter', 'block_area', 'block_aspect',
+                   # 'land', 'edge_count', 'edge_length', 'total_len', 'vertex_count',
+        'edge_angle',
+                   # 'segment_length', 'node_degree', 'segment_circuity',
+                   # 'block_perimeter', 'block_area', 'block_aspect',
                    # slow ones:
                    # 'transport_ratio' , #'betweenness_centrality',
                    # 'pagerank', 'pagerank_on_edges'
@@ -347,7 +351,9 @@ def main(scale_to_meters = 1, interactive_render=False, render_all=False):
     plt.show()
 
     if len(npz_file_names) == 1 and interactive_render:
-       FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False, render_params= render_params, interactive_rendering=True).run()
+       FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters,
+                water_map=utils.built_opengl_watermap_texture(), draw_verts=False, render_params= render_params,
+                interactive_rendering=True).run()
 
 if __name__ == '__main__':
     # Input Directory holding npz files

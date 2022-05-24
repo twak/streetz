@@ -1,3 +1,4 @@
+import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -30,9 +31,7 @@ def build_blocks(vertices, edges):
 
             B = [start[0]]
 
-            # print ( "start is %s " % str(vertices[start[0]]) + ", " + str(vertices[start[1]] ) )
-
-            next_e = start
+            # next_e = start
             next_v = start[1] # pt_idx
             prev_v = start[0]
 
@@ -45,45 +44,37 @@ def build_blocks(vertices, edges):
                 area += -utils.area( start[0], prev_v, next_v, vertices )
 
                 pts = v2e.get_other_pts(next_v)
-                min = 1000
+                minn = sys.float_info.max
 
                 bad = False
                 for idx, p_idx in enumerate ( pts ):
                     if p_idx != prev_v and (next_v, p_idx) in remaining:
                         a = angle ( prev_v, next_v, p_idx, vertices)
-                        if a < min:
+                        if a < minn:
                             next_next_v = pts[ idx ]
-                            min = a
+                            minn = a
 
-                if min == 1000:
+                if minn == sys.float_info.max:
                     if (next_v, prev_v) in remaining and len(pts) == 1:
                         next_next_v = prev_v # traversing a dead-end
-                        #print ("dead end!")
                     else:
                         bad = True
 
                 if bad:
+                    print("failed to complete a block perimeter :(")
                     break
-
-                #next_next_v = pts [ np.fromiter( map(lambda p_idx: angle ( prev_v, next_v, p_idx, vertices ), pts),  dtype=np.float).argmin() ]
 
                 prev_v = next_v
                 next_v = next_next_v
 
                 # if (prev_v, next_v) in remaining:
                 remaining.remove( (prev_v, next_v) )
-                # print("removed edge %d  %s " % (len(remaining), str(vertices[prev_v])+", "+str(vertices[next_v]) ))
-
-            # print (" blcok area is %.2f " % area)
 
             # if area > 0:
             if len(B) < 100 and area > 0 and not bad:
                 # print ("adding block of area %.2f" % area)
                 BLOCKS.append(B)
                 BLOCK_AREA.append(area)
-            else:
-                pass
-                # print("ignoring block bad:" +str(bad))
 
     return BLOCKS
 
@@ -152,8 +143,6 @@ def block_perimeter( vertices, edges, table_data, table_row_names, render_params
 
     if norm:
         out = out / float ( len (blocks) )
-
-    #FastPlot(2048, 2048, vertices, edges, scale=0.1, edge_cols = np.array(edge_cols) ).run()
 
     return out
 
@@ -347,11 +336,16 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
         rectness = area / (h * w)
         total_rectness += rectness
 
-        cen = block_centers[b_idx]# np.array((3), dtype=float)
-        for idx in range(len(v_ids)):
-            cen = cen +  vertices[v_ids[idx]]
+        # cen = block_centers[b_idx]# np.array((3), dtype=float)
+        cen = np.zeros((2))
+        bc_cen = 0
+        for idx, v_idx in enumerate ( v_ids):
+            l = np.linalg.norm (vertices[v_idx] - (vertices[ v_ids[(idx+1) % len(v_ids)] ]))
+            cen = cen + vertices[v_idx] * l
+            bc_cen += l
 
-        cen /= len(v_ids)
+        cen /= bc_cen
+
         block_centers[b_idx] = cen
         per_block    [b_idx] = aspect
 
@@ -361,11 +355,10 @@ def block_aspect ( vertices, edges, table_data, table_row_names, render_params, 
     if len (blocks) > 0:
         table_data.append("%.2f" % (total / float(len(blocks))))
         table_data.append("%.2f" % (total_rectness / float(count)))
+        render_params.append(dict(block_pts=block_centers, block_cols=utils.norm_and_color_map(per_block), name=f"Block aspect ratio"))
     else:
         table_data.append("-")
         table_data.append("-")
-
-    render_params.append(dict( block_pts=block_centers, block_cols=utils.norm_and_color_map(per_block), name=f"Block aspect ratio"))
 
     total_long_edge_len = np.array(total_long_edge_len)
     total_short_edge_len = np.array(total_short_edge_len)

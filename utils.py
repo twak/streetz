@@ -26,18 +26,15 @@ def angle(ai, bi, ci, vertices):
     b = vertices[bi]
     c = vertices[ci]
 
-    x = b-a
-    y = c-b
+    ab = b-a
+    bc = c-b
 
-    dot = x[0] * x[1] + y[0] * y[1]  # dot product between [x1, y1] and [x2, y2]
-    det = x[0] * y[1] - y[0] * x[1]  # determinant
-    out = math.atan2(det, dot)  # atan2(y, x) or atan2(sin, cos) https://stackoverflow.com/a/16544330/708802
-    # if out < 0:
-    #     out = np.pi *2 + out
+    # https://stackoverflow.com/a/16544330/708802
+    dot = ab[0] * bc[0] + ab[1] * bc[1]  # dot product between [x1, y1] and [x2, y2]
+    det = ab[0] * bc[1] - ab[1] * bc[0]  # determinant
+    out = math.atan2(det, dot)
 
     return out
-
-    # return math.atan2(c[1] - a[1], c[0] - a[0]) - math.atan2(b[1] - a[1], b[0] - a[0]) #https://stackoverflow.com/a/31334882/708802
 
 def area (ai, bi, ci, vertices):
 
@@ -196,7 +193,8 @@ def load_filter(np_file_content, npz, scale_to_meters = 10000):
 
     vertices = np_file_content['tile_graph_v']
     edges = np_file_content['tile_graph_e']
-    if npz.endswith("gt.npz"):
+
+    if npz.endswith("gt.npz"):  # we were sent a bunch of matricies padded with -1
         new_edges = []
         for e in edges:
             if e[0] == -1 or e[1] == -1:
@@ -217,8 +215,7 @@ def load_filter(np_file_content, npz, scale_to_meters = 10000):
         print("removed -1 -1 %d/%d verts " % (len(vertices) - len(new_edges), len(new_edges)))
         vertices = np.array(new_verts)
 
-    # edges on generated need filtering for short diagonals
-    if npz.endswith("generated.npz"):
+    if npz.endswith("generated.npz"): # edges on generated graphs need filtering for short diagonals
 
         one = 2 / 4028.
         new_edges = []
@@ -246,6 +243,24 @@ def load_filter(np_file_content, npz, scale_to_meters = 10000):
 
         print("filtered %d/%d edges " % (len(edges) - len(new_edges), len(edges)))
         edges = np.array(new_edges, dtype=int)
+        reset_v2e_cache()
+
+
+    # def bad(a):
+    #     t = 0.05
+    #     return a[0] < -t or a[0] > t or a[1] < -t or a[1] > t
+    #
+    # new_edges = []
+    #
+    # for e in edges:
+    #     a = vertices[e[0]]
+    #     b = vertices[e[1]]
+    #     if bad(a) or bad(b):
+    #         pass
+    #     else:
+    #         new_edges.append(e)
+    #
+    # edges = np.array(new_edges, dtype=int)
 
     if 'land_and_water_map' in np_file_content:
         builtins.WATER_MAP = np_file_content['land_and_water_map']
