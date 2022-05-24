@@ -1,8 +1,6 @@
 import os
 import sys
 
-import io
-
 import ezdxf as ezdxf
 import numpy as np
 
@@ -93,85 +91,19 @@ def plot_land_water_map(land_water_map, axs):
     im_extent = (MIN_RANGE, MAX_RANGE, MIN_RANGE, MAX_RANGE)
     axs.imshow(land_water_map, extent = im_extent, cmap = cmap, zorder = -3)
 
-def plot(v, e, land_and_water, img_file_path):
+def plot(v, e, land_and_water, img_file_path, do_graph=False):
+
     fig, axs = plt.subplots(1, 1, facecolor = 'black')
 
-    # plot_street_graph(v, e, axs)
+    if do_graph:
+        plot_street_graph(v, e, axs)
     if land_and_water is not None:
         plot_land_water_map(land_and_water, axs)
 
     set_aspect_and_range(axs, x_range = [MIN_RANGE, MAX_RANGE], y_range = [MIN_RANGE, MAX_RANGE])
-    
     fig.savefig(img_file_path, format = "png", dpi = 600, bbox_inches = 'tight', pad_inches = 0, facecolor = fig.get_facecolor(), edgecolor = 'none')
-
     plt.close(fig)
 
-
-def dxf_to_npz(dxf, scale, outfile, water_from= None):
-
-    doc = ezdxf.readfile(dxf)
-    msp = doc.modelspace()
-
-    pos = []
-    idx = []
-    pos_to_ind = {}
-
-    def add(pt):
-        pt = (pt[0], pt[1]) # drop z
-
-        if pt in pos_to_ind:
-            return pos_to_ind[pt]
-        else:
-            pos.append(np.array(pt))
-            i = len(pos)-1
-            pos_to_ind[pt] = i
-            return i
-
-    hw2 = scale/ 2.
-
-    def oob(pt):
-
-        return pt[0] < -hw2 or pt[0] > hw2 or pt[1] < -hw2 or pt[1] > hw2
-
-
-    for line in msp:
-        if line.dxftype() == "LINE":
-            s = line.dxf.start
-            e = line.dxf.end
-
-            si = add(s)
-            ei = add(e)
-
-            if oob(s) or oob(e):
-                continue
-
-            idx.append([add(s), add(e)])
-
-            print("start point: %s\n" % line.dxf.start)
-            print("end point: %s\n" % line.dxf.end)
-
-    print(f"parsed DXF with edges {len(idx)}  pts {len(pos)}\n")
-
-    vertices = np.array(pos, dtype=np.float64)
-    edges    = np.array(idx, dtype=np.int32)
-    vertices /= hw2
-
-    vertices[:, [0, 1]] = vertices[:, [1, 0]] # keep flipping axes it looks right...
-
-    params = dict(tile_graph_v=vertices, tile_graph_e=edges)
-
-    if water_from is not None:
-        params['land_and_water_map'] = np.load(water_from)['land_and_water_map']
-
-    # range = max ( vertices[:, 0].max() - vertices[:, 0].min(), vertices[:, 0].max() - vertices[:, 0].min() )
-
-
-    # print(str(vertices.shape))
-    # print(str(edges.shape))
-    # (10222, 3)
-    # (15853, 2)
-
-    np.savez(outfile, **params)
 
 def main():
     input_path = sys.argv[1]
@@ -222,8 +154,4 @@ if __name__ == '__main__':
     # Output Directory to save the images
     sys.argv.append(r'npz\img')
 
-
-    dxf_to_npz("C:\\Users\\twak\\Documents\\CityEngine\\Default Workspace\\datatest\\data\\sf.dxf", 19567,
-                "npz/sf_ce.npz", water_from='C:\\Users\\twak\\PycharmProjects\\streets2\\generated\\sanfran_generated.npz')
-
-    # main()
+    main()

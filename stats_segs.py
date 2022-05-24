@@ -2,85 +2,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from math import floor
-
 import utils
 from utils import l2, COLORS
-
-from fast_plot import FastPlot
 
 SEGS = None
 SEG_LENGTHS = None
 SEG_EDGES = None
-V2E = None
-
-class VertexMap ():
-
-    def __init__(s, vertices, edges):
-        s.v2e = {}
-        s.v2ei = {}
-        s.v = vertices
-        s.e = edges
-
-        for v in range(len ( vertices) ):
-            s.v2e [v] = []
-            s.v2ei[v] = []
-
-        for idx, e in enumerate(edges):
-            # sk = vertices[e[0]].tobytes()
-            # ek = vertices[e[1]].tobytes()
-
-            s.v2e[e[0]].append(e)
-            s.v2e[e[1]].append(e)
-
-            s.v2ei[e[0]].append(idx)
-            s.v2ei[e[1]].append(idx)
-
-    def is_jn(s,v_idx):
-        return len(s.v2e[ v_idx]) != 2
-
-    def get_other_edge(s,e1_, v_idx):  # get the other street of hte street from the vertex
-
-        e1 = np.array(e1_)
-        for e2 in s.v2e[ v_idx ]:
-            if not np.array_equal(e2, e1):
-                return e2
-
-        raise RuntimeError("get other edge %d %s" % (e1, v_idx))
-
-    def get_other_vert_idx(s,e, v_idx):  #
-
-        if e[0] == v_idx:
-            return e[1]
-        elif e[1] == v_idx:
-            return e[0]
-        else:
-            raise RuntimeError("get other vert %d %s" % (e, v_idx))
-
-    def get_other_pts(s, next_v):
-
-        out = []
-        for e in s.v2e[ next_v ]:
-
-            if e[0] == next_v:
-                out.append(e[1])
-            elif e[1] == next_v:
-                out.append(e[0])
-            else:
-                raise RuntimeError("lookup failure")
-
-        return out
-
-    # def get_other_edges(s, next_v): # returns edge indicies
-    #     return s.v2ei[ next_v ]
-
-def build_V2E(v, e):
-
-    global V2E
-    if V2E is None:
-        V2E = VertexMap (v, e)
-
-    return V2E
-
 def build_segs(vertices, edges):
 
     global SEGS, SEG_LENGTHS, SEG_EDGES
@@ -91,7 +18,7 @@ def build_segs(vertices, edges):
         SEGS = [] # list of vertex indicies for per segment
         SEG_EDGES = [] # list of unordered edge indicies per segment
 
-        v2e = build_V2E(vertices, edges)
+        v2e = utils.build_V2E(vertices, edges)
 
         remaining = {tuple(row) for row in edges}
         lookup = {}
@@ -154,11 +81,10 @@ def get_seg_by_edge():
     return SEG_EDGES
 
 def reset_seg_cache():
-    global SEGS, SEG_LENGTHS, SEG_EDGES,V2E
+    global SEGS, SEG_LENGTHS, SEG_EDGES
     SEGS = None
     SEG_LENGTHS = None
     SEG_EDGES = None
-    V2E = None
 
 def segment_length( vertices, edges, table_data, table_row_names, render_params, minn=0, maxx=400, bins = 32, norm = True ):
 
@@ -236,14 +162,15 @@ def plot_segment_length(all_city_stat, name, fig, subplots, subplot_idx, minn=0,
 
 def segment_circuity ( vertices, edges, table_data, table_row_names, render_params, minn=1, maxx=2, bins = 32, norm = True ):
 
-    out = np.zeros((bins), dtype=np.int)
-    per_edge = np.zeros((len(edges)), dtype=np.int)
+    out = np.zeros((bins), dtype=int)
+    per_edge = np.zeros((len(edges)), dtype=float)
 
     segs = build_segs(vertices, edges)
     sl = get_seg_lengths()
 
     total = 0.
-    count = 0
+    count_graph = 0
+    count_non_loops = 0
 
     si = get_seg_by_edge()
     for seg_idx, s in enumerate ( segs ):
@@ -257,29 +184,32 @@ def segment_circuity ( vertices, edges, table_data, table_row_names, render_para
             ratio = curve_len / euclid
 
         total = total + ratio
+        count_non_loops += 1
+
+        for e in si[seg_idx]:
+            per_edge[e] = ratio
 
         if (ratio < 1.02):
             continue
 
         ratio = max(minn, min(maxx, ratio), ratio)
-        for e in si[seg_idx]:
-            per_edge[e] = ratio
+
 
         idx = floor( (ratio-minn) * bins / (maxx - minn))
         idx = min(idx, bins - 1)
         out[idx] = out[idx] + 1
-        count = count + 1
+        count_graph = count_graph + 1
 
-    for s_idx, e_list in enumerate ( get_seg_by_edge() ):
+    if count_non_loops != 0:
+        table_data.append("%.4f" % (total / count_non_loops))
+    else:
+        table_data.append("-")
 
-        for e in e_list:
-            per_edge[e] = sl[s_idx]
-
-    table_data.append("%.4f" % (total / len(segs)))
     table_row_names.append("Mean segment circuity")
 
     if norm:
-        out = out / float (count)
+        if count_graph > 0:
+            out = out / float (count_graph)
 
     render_params.append(dict(edge_cols=utils.norm_and_color_map(per_edge), name="Segment circuity"))
 

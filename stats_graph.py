@@ -4,8 +4,7 @@ import networkx as nx
 import numpy as np
 
 import utils
-from utils import l2, l2p
-from stats_segs import build_V2E
+from utils import l2, l2p, build_V2E
 
 from math import floor
 

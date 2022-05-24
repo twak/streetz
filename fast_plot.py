@@ -9,6 +9,8 @@ from pyglet.gl import *
 from ctypes import pointer, sizeof
 from pyglet import image
 
+import pyglet.window.key as key
+
 # Zooming constants
 import utils
 
@@ -17,17 +19,7 @@ ZOOM_OUT_FACTOR = 1/ZOOM_IN_FACTOR
 
 class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/708802
 
-    def __init__(self, width, height, verts, edges, water_map=None, draw_verts=True, vert_cols = None, edge_cols=None, render_params=None, draw_key=False, scale = 1000, *args, **kwargs):
-        conf = Config(sample_buffers=1,
-                      samples=4,
-                      depth_size=16,
-                      double_buffer=True)
-
-        #Initialize camera values
-        # self.left = -width / 2
-        # self.right = width / 2
-        # self.bottom = -height / 2
-        # self.top = height / 2
+    def __init__(self, width, height, verts, edges, water_map=None, draw_verts=True, vert_cols = None, edge_cols=None, interactive_rendering=False, render_params=None, draw_key=False, scale = 1000, *args, **kwargs):
 
         self.left = -2000
         self.right = 2000
@@ -35,8 +27,6 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         self.top = 2000
 
         self.zoom_level = 1
-        # self.zoomed_width = width
-        # self.zoomed_height = height
         self.zoomed_width = 4000
         self.zoomed_height = 4000
         self.verts = verts
@@ -48,14 +38,23 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         self.water_map = water_map
 
         self.draw_verts = draw_verts
+
+        self.interactive_renders = interactive_rendering # true: let users flip through the renders; false: render, save, and quite?
+        self.interactive_render_i = 0 # which param we're showing
+
         builtins.RENDERS = [] # output renders go here when done
-        self.render_name = "?!g" # key/title for each render
+        self.render_name = "?!" # key/title for each render
         self.render_params = render_params
         self.quit_on_empty_render_params = render_params is not None
         self.block_pts = None # we don't always know where blocks are
         self.block_cols = None
         self.draw_blocks = False
         self.draw_key = draw_key
+
+        conf = Config(sample_buffers=1,
+                      samples=4,
+                      depth_size=16,
+                      double_buffer=True)
 
         super().__init__(width, height, config=conf,*args, **kwargs)
 
@@ -67,6 +66,7 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         pass
 
     def init_gl(self, width, height):
+
         # Set clear color
         glClearColor(255./255, 195./255, 72./255, 255./255)
 
@@ -96,6 +96,7 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
             self.point_color_data = (np.zeros( ( len(self.verts), 3) ) + 1).flatten()
         else:
             self.point_color_data = self.vert_cols.flatten()
+
         data = (GLfloat * len(self.point_color_data))(*self.point_color_data)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo_point_colors)
         glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW)
@@ -140,7 +141,6 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
             pitch=img.shape[0] * 4 * 1
         )
 
-
         textureIDs = (pyglet.gl.GLuint * 1)()
         glGenTextures(1, textureIDs)
         self.key_tex_id = textureIDs[0]
@@ -180,6 +180,20 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         # Initialize OpenGL context
         self.init_gl(width, height)
 
+    def on_key_release(self, symbol, modifiers):
+
+        plen = len (self.render_params)
+
+        if self.interactive_renders and plen >= 1:
+            match symbol:
+                case key.UP:
+                    self.interactive_render_i = (self.interactive_render_i + 1) % plen
+                case key.DOWN:
+                    self.interactive_render_i = (self.interactive_render_i - 1 + plen) % plen
+
+            self.setup_render(self.render_params[self.interactive_render_i])
+
+
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         # Move camera
         self.left   -= dx*self.zoom_level
@@ -214,6 +228,8 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
         self.draw_blocks = False
         # self.draw_key = True
 
+        self.set_caption(param["name"])
+
         if "edge_cols" in param:
             self.edge_cols = param["edge_cols"]
         else:
@@ -245,13 +261,18 @@ class FastPlot(pyglet.window.Window): #https://stackoverflow.com/a/19453006/7088
 
     def on_draw(self):
 
-        if self.render_params is not None and len(self.render_params) > 0:
-            self.setup_render ( self.render_params.pop() )
-            do_capture = True
+        do_capture = False
+
+        if self.interactive_renders:
+            pass
         else:
-            do_capture = False
-            if self.quit_on_empty_render_params:
-                self.close()
+            if self.render_params is not None and len(self.render_params) > 0:
+                self.setup_render ( self.render_params.pop() )
+                do_capture = True
+            else:
+
+                if self.quit_on_empty_render_params:
+                    self.close()
 
         # Clear window with ClearColor
         glClear( GL_COLOR_BUFFER_BIT )
@@ -408,31 +429,12 @@ def main():
 
         np_file_content = np.load(npz_path)
 
-        scale_to_meters =19567
-
-        # Vertices
-        vertices = np_file_content['tile_graph_v']
-        edges    = np_file_content['tile_graph_e']
-
-        vertices[:, [0, 1]] = vertices[:, [1, 0]]
-        # vertices [[a,b]] = ver
-
-        if 'land_and_water_map' in np_file_content:
-            builtins.WATER_MAP = np_file_content['land_and_water_map']
-
-        vertices = vertices * scale_to_meters
-
-        if hasattr(np_file_content, 'land_and_water_map'):
-            land_and_water = np_file_content['land_and_water_map']
-        else:
-            land_and_water = None
+        vertices, edges, scale_to_meters = utils.load_filter( np_file_content, npz)
 
         FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False ).run()
         #FastPlot(2048, 2048, vertices, edges, visible=False).run()
 
         break
-
-# IMG_OUT = None
 
 if __name__ == '__main__':
     # Input Directory holding npz files
@@ -442,4 +444,3 @@ if __name__ == '__main__':
     sys.argv.append(r'npz\img')
 
     main()
-    # print("main done" + str(IMG_OUT))

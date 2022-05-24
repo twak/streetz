@@ -4,6 +4,9 @@ import numpy as np
 import builtins
 import PIL
 
+import matplotlib.pyplot as plt
+
+
 def l2 ( e, vertices ):
 
     a = np.array(vertices[e[0]])
@@ -92,6 +95,19 @@ def write_latex_table(table_strs, npz_file_names, table_row_names, file):
         f.write('\\end{tabular}\n')
         f.write('\\end{center}\n')
 
+
+def plot_table(npz_file_names, subplot_count, table_row_names, table_strs):
+    plt.subplots_adjust(wspace=0.5, hspace=1)
+    axs = plt.subplot(subplot_count, 1, 1)
+    axs.axis('off')
+    tab = axs.table(cellText=table_strs, colLabels=npz_file_names, rowLabels=table_row_names, loc='center', cellLoc='center')
+    tab.auto_set_column_width(col=list(range(len(npz_file_names))))
+    tab.set_fontsize(8)
+    for i in range(len(npz_file_names)):
+        tab[(0, i)].set_facecolor(COLORS[i % (len(COLORS))])
+
+
+
 def land_area_km():
     size = builtins.MAP_SIZE_M * 0.001
     return builtins.LAND_RATIO * size * size
@@ -165,3 +181,155 @@ def cyclic_color_map(values_per_edge):
     return maxx, minn, CYCLIC_COLS[0, lu]
 
 
+def land_water_ratio(land_water_map):
+    water_map_range = np.max(land_water_map) - np.min(land_water_map)
+    if water_map_range == 0:
+        water_map_range = 1.0
+    land_water_map = (land_water_map - np.min(land_water_map)) / water_map_range
+    return 1-land_water_map.mean()
+
+def load_filter(np_file_content, npz, scale_to_meters = 10000):
+
+    if 'tile_width_height_mercator_meters' in np_file_content:
+        print("overriding scale with merator value...")
+        scale_to_meters = np_file_content['tile_width_height_mercator_meters'][0] / 2
+
+    vertices = np_file_content['tile_graph_v']
+    edges = np_file_content['tile_graph_e']
+    if npz.endswith("gt.npz"):
+        new_edges = []
+        for e in edges:
+            if e[0] == -1 or e[1] == -1:
+                pass
+            else:
+                new_edges.append(e)
+
+        print("removed -1 -1 %d/%d edges " % (len(edges) - len(new_edges), len(edges)))
+        edges = np.array(new_edges, dtype=int)
+
+        new_verts = []
+        for v in vertices:
+            if v[0] == -1 and v[1] == -1:
+                pass
+            else:
+                new_verts.append(v)
+
+        print("removed -1 -1 %d/%d verts " % (len(vertices) - len(new_edges), len(new_edges)))
+        vertices = np.array(new_verts)
+
+    # edges on generated need filtering for short diagonals
+    if npz.endswith("generated.npz"):
+
+        one = 2 / 4028.
+        new_edges = []
+
+        v2e = VertexMap(vertices, edges)
+
+        def matching_endpoints(e, v2e):
+            for ai in v2e.get_other_pts(e[1]):
+                if ai != e[0]:
+                    for bi in v2e.get_other_pts(e[0]):
+                        if bi != e[1]:
+                            if ai == bi:
+                                return True
+            return False
+
+        for e in edges:
+            a = vertices[e[0]]
+            b = vertices[e[1]]
+            if abs(abs(a[0] - b[0]) - one) < 1e-5 and \
+                    abs(abs(a[1] - b[1]) - one) < 1e-5 and \
+                    matching_endpoints(e, v2e):
+                pass
+            else:
+                new_edges.append(e)
+
+        print("filtered %d/%d edges " % (len(edges) - len(new_edges), len(edges)))
+        edges = np.array(new_edges, dtype=int)
+
+    if 'land_and_water_map' in np_file_content:
+        builtins.WATER_MAP = np_file_content['land_and_water_map']
+        builtins.LAND_RATIO = land_water_ratio(builtins.WATER_MAP)
+    else:
+        builtins.LAND_RATIO = 1  # everything is land
+
+    vertices[:, [0, 1]] = vertices[:, [1, 0]]  # flip for ever-changing convention
+    vertices = vertices * scale_to_meters  # distances in meters
+
+    return vertices, edges, scale_to_meters
+
+
+
+V2E = None
+
+class VertexMap ():
+
+    def __init__(s, vertices, edges):
+        s.v2e = {}
+        s.v2ei = {}
+        s.v = vertices
+        s.e = edges
+
+        for v in range(len ( vertices) ):
+            s.v2e [v] = []
+            s.v2ei[v] = []
+
+        for idx, e in enumerate(edges):
+            # sk = vertices[e[0]].tobytes()
+            # ek = vertices[e[1]].tobytes()
+
+            s.v2e[e[0]].append(e)
+            s.v2e[e[1]].append(e)
+
+            s.v2ei[e[0]].append(idx)
+            s.v2ei[e[1]].append(idx)
+
+    def is_jn(s,v_idx):
+        return len(s.v2e[ v_idx]) != 2
+
+    def get_other_edge(s,e1_, v_idx):  # get the other street of hte street from the vertex
+
+        e1 = np.array(e1_)
+        for e2 in s.v2e[ v_idx ]:
+            if not np.array_equal(e2, e1):
+                return e2
+
+        raise RuntimeError("get other edge %d %s" % (e1, v_idx))
+
+    def get_other_vert_idx(s,e, v_idx):  #
+
+        if e[0] == v_idx:
+            return e[1]
+        elif e[1] == v_idx:
+            return e[0]
+        else:
+            raise RuntimeError("get other vert %d %s" % (e, v_idx))
+
+    def get_other_pts(s, next_v):
+
+        out = []
+        for e in s.v2e[ next_v ]:
+
+            if e[0] == next_v:
+                out.append(e[1])
+            elif e[1] == next_v:
+                out.append(e[0])
+            else:
+                raise RuntimeError("lookup failure")
+
+        return out
+
+    # def get_other_edges(s, next_v): # returns edge indicies
+    #     return s.v2ei[ next_v ]
+
+def build_V2E(v, e):
+
+    global V2E
+    if V2E is None:
+        V2E = VertexMap (v, e)
+
+    return V2E
+
+def reset_v2e_cache():
+    global V2E
+    V2E = None

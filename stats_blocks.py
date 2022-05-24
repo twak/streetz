@@ -2,15 +2,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from math import floor
-
 import utils
-from utils import angle, COLORS
-
-from fast_plot import FastPlot
-
+from utils import angle, build_V2E
 from scipy.spatial import ConvexHull
-
-from stats_segs import VertexMap, V2E, build_V2E
 
 BLOCKS = None
 BLOCK_EDGES = None

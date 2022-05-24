@@ -1,6 +1,7 @@
 import traceback
 
 import utils
+from fast_plot import FastPlot
 from stats_segs import *
 from stats_blocks import *
 from stats_graph import *
@@ -185,12 +186,12 @@ def plot_edge_angle(all_city_stat, name, fig, subplots, subplot_idx, bins = 18):
 
 def node_degree(vertices, edges, table_data, table_row_names, render_params, maxx = 5, norm = True ):
 
-    out = np.zeros((maxx), dtype=np.int)
+    out = np.zeros((maxx), dtype=int)
 
     valency = {}
 
     def add(a):
-        aa = a.tostring()
+        aa = a.tobytes()
         if aa in valency:
             valency[aa]= valency[aa]+1
         else:
@@ -243,14 +244,8 @@ def plot_node_degree(all_city_stat, name, fig, subplots, subplot_idx, maxx = 5):
         plt.xticks(x_pos, x_lab)
         # axis.plot( x_pos, r, 'tab:orange')
 
-def land_water_ratio(land_water_map):
-    water_map_range = np.max(land_water_map) - np.min(land_water_map)
-    if water_map_range == 0:
-        water_map_range = 1.0
-    land_water_map = (land_water_map - np.min(land_water_map)) / water_map_range
-    return 1-land_water_map.mean()
 
-def main(scale_to_meters = 1, do_render=False):
+def main(scale_to_meters = 1, interactive_render=False, render_all=False):
 
     builtins.MAP_SIZE_M = scale_to_meters
 
@@ -273,8 +268,8 @@ def main(scale_to_meters = 1, do_render=False):
                    'segment_length', 'edge_angle', 'node_degree', 'segment_circuity',
                    'block_perimeter', 'block_area', 'block_aspect',
                    # slow ones:
-                   'transport_ratio' , #'betweenness_centrality',
-                   'pagerank', 'pagerank_on_edges'
+                   # 'transport_ratio' , #'betweenness_centrality',
+                   # 'pagerank', 'pagerank_on_edges'
                    ]
 
     all_city_stats = {}
@@ -286,15 +281,9 @@ def main(scale_to_meters = 1, do_render=False):
     table_row_names = []
     table_data = []
 
-    render_all = True
-
-    if not render_all:
-        render_params = []
-
     for idx, npz in enumerate(npz_file_names):
 
-        if render_all:
-            render_params = []
+        render_params = []
 
         print(f'{idx}/{len(npz_file_names)} : {npz}')
 
@@ -302,79 +291,12 @@ def main(scale_to_meters = 1, do_render=False):
         reset_block_cache()
         reset_graph_cache()
         utils.reset_watermap()
+        utils.reset_v2e_cache()
 
         npz_path = os.path.join(input_path, npz)
         np_file_content = np.load(npz_path)
 
-        #scale
-        if 'tile_width_height_mercator_meters' in np_file_content:
-            print ("overriding scale with merator value...")
-            scale_to_meters = np_file_content['tile_width_height_mercator_meters'][0]/2
-
-
-        vertices = np_file_content['tile_graph_v']
-
-        edges = np_file_content['tile_graph_e']
-
-        if npz.endswith("gt.npz"):
-            new_edges=[]
-            for e in edges:
-                if e[0] == -1 or e[1] == -1:
-                    pass
-                else:
-                    new_edges.append(e)
-
-            print ("removed -1 -1 %d/%d edges " % ( len(edges) - len(new_edges), len(edges)) )
-            edges = np.array(new_edges, dtype=int)
-
-            new_verts=[]
-            for v in vertices:
-                if v[0] == -1 and v[1] == -1:
-                    pass
-                else:
-                    new_verts.append(v)
-
-            print ("removed -1 -1 %d/%d verts " % ( len(vertices) - len(new_edges), len(new_edges)) )
-            vertices = np.array(new_verts)
-
-        # edges on generated need filtering for short diagonals
-        if npz.endswith("generated.npz"):
-
-            one = 2 / 4028.
-            new_edges=[]
-
-            v2e = VertexMap(vertices, edges)
-
-            def matching_endpoints(e, v2e):
-                for ai in v2e.get_other_pts(e[1]):
-                    if ai != e[0]:
-                        for bi in v2e.get_other_pts(e[0]):
-                            if bi != e[1]:
-                                if ai == bi:
-                                    return True
-                return False
-
-            for e in edges:
-                a = vertices[e[0]]
-                b = vertices[e[1]]
-                if abs(abs(a[0] - b[0]) - one) < 1e-5 and \
-                   abs ( abs(a[1] - b[1]) - one) < 1e-5 and \
-                   matching_endpoints(e, v2e):
-                    pass
-                else:
-                    new_edges.append(e)
-
-            print ("filtered %d/%d edges " % ( len(edges) - len(new_edges), len(edges)) )
-            edges = np.array(new_edges, dtype=int)
-
-        if 'land_and_water_map' in np_file_content:
-            builtins.WATER_MAP = np_file_content['land_and_water_map']
-            builtins.LAND_RATIO = land_water_ratio( builtins.WATER_MAP )
-        else:
-            builtins.LAND_RATIO = 1 # everything is land
-
-        vertices[:, [0, 1]] = vertices[:, [1, 0]] # flip for ever-changing convention
-        vertices = vertices * scale_to_meters  # distances in meters
+        vertices, edges, scale_to_meters = utils.load_filter( np_file_content, npz, scale_to_meters)
 
         td = []
         table_data.append(td)
@@ -405,24 +327,13 @@ def main(scale_to_meters = 1, do_render=False):
         if name in globals():
             graph_fns.append(name)
 
-    fig = plt.figure(figsize=(10, (len ( graph_fns ) + 1) *5))
-    plt.subplots_adjust(wspace = 0.5, hspace = 1)
-
-    subplot_count = len(graph_fns) + 1
-    axs = plt.subplot(subplot_count, 1, 1)
-
-    axs.axis('off')
     table_strs = [[ "%s" % y for y in x] for x in np.transpose(table_data)]
     metric_names = list ( map (lambda m : m.replace("_", " "), metric_fns))
+    subplot_count = len(graph_fns) + 1
+    fig = plt.figure(figsize=(10, (len ( graph_fns ) + 1) *5))
 
-    utils.write_latex_table (table_strs, npz_file_names, table_row_names, 'big_maps/table.tex')
-
-    tab = axs.table(cellText=table_strs, colLabels=npz_file_names, rowLabels=table_row_names, loc='center', cellLoc='center')
-    tab.auto_set_column_width(col=list(range(len(npz_file_names))))
-    tab.set_fontsize(8)
-    for i in range (len (npz_file_names)):
-        #tab[(0, i)].get_text().set_color(COLORS[i])
-        tab[(0, i)].set_facecolor(COLORS[i%(len(COLORS))])
+    utils.write_latex_table(table_strs, npz_file_names, table_row_names, 'big_maps/table.tex')
+    utils.plot_table(npz_file_names, subplot_count, table_row_names, table_strs)
 
     subplot_pos = 0
     for idx, m in enumerate(metric_fns):
@@ -435,44 +346,8 @@ def main(scale_to_meters = 1, do_render=False):
     plt.savefig("big_maps/stats.svg")
     plt.show()
 
-    if len(npz_file_names) == 1 and do_render:
-
-        if False: # render and quit
-            try:
-                FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False, render_params= render_params).run()
-            except Exception as e:
-                print ("fast plot experienced an error")
-                print (e)
-        else: # interactive
-            FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False ).run()
-
-        renders = builtins.RENDERS
-
-        for render in renders:
-            PIL.Image.fromarray(render[1]).save("big_maps/"+ npz_file_names[0]+"_"+render[0]+".png")
-
-        if False: # show as massive matplot lib figure. waste. of. keystrokes.
-
-            dpi = 1 / plt.rcParams['figure.dpi']  # pixel in inches
-            fig = plt.figure(figsize=((2048 + 50) * dpi, (len(renders) ) * (2048 + 45) * dpi), frameon=False)
-
-            plt.subplots_adjust(left=0., right=1., top=1., bottom=0., wspace=None, hspace=None)
-            plt.tight_layout()
-
-            for subplot_idx, render in enumerate ( renders ):
-                axs = plt.subplot(len(renders), 1, subplot_idx+1)
-                axs.title.set_text(render[0])
-                axs.axis('off')
-                axs.set_xticklabels([])
-                axs.set_yticklabels([])
-                axs.imshow(render[1], interpolation="nearest")
-                axs.set_xlim(0.0, 2048 )
-                axs.set_ylim(2048, 0.0 )
-
-            plt.show()
-
-
-
+    if len(npz_file_names) == 1 and interactive_render:
+       FastPlot(2048, 2048, vertices, edges, scale=2000. / scale_to_meters, water_map=utils.built_opengl_watermap_texture(), draw_verts=False, render_params= render_params, interactive_rendering=True).run()
 
 if __name__ == '__main__':
     # Input Directory holding npz files
@@ -483,7 +358,7 @@ if __name__ == '__main__':
 
     # dxf_to_npz("C:\\Users\\twak\\Documents\\CityEngine\\Default Workspace\\datatest\\data\\dxf_streets_1.dxf", 20000, "test.npz")
 
-    main(scale_to_meters=19567, do_render=True)
+    main(scale_to_meters=19567, interactive_render=True)
 
 
 
