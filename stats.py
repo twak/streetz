@@ -267,13 +267,13 @@ def main(scale_to_meters = 1, interactive_render=False, render_all=False):
         return
 
     metric_fns = [
-                   # 'land', 'edge_count', 'edge_length', 'total_len', 'vertex_count',
-        'edge_angle',
-                   # 'segment_length', 'node_degree', 'segment_circuity',
-                   # 'block_perimeter', 'block_area', 'block_aspect',
+                    'land', 'edge_count', 'edge_length', 'total_len', 'vertex_count',
+                    'edge_angle',
+                    'segment_length', 'node_degree', 'segment_circuity',
+                    'block_perimeter', 'block_area', 'block_aspect',
                    # slow ones:
-                   # 'transport_ratio' , #'betweenness_centrality',
-                   # 'pagerank', 'pagerank_on_edges'
+                    'transport_ratio' , #'betweenness_centrality',
+                    'pagerank', 'pagerank_on_edges'
                    ]
 
     all_city_stats = {}
