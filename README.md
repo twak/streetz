@@ -35,3 +35,8 @@ references:
  * https://arxiv.org/pdf/1705.02198.pdf
  * https://appliednetsci.springeropen.com/track/pdf/10.1007/s41109-019-0189-1.pdf
  * transport ratio https://arxiv.org/ftp/arxiv/papers/1708/1708.00836.pdf
+
+example outputs:
+
+![cityengine streets on Chicago base; edge angle](https://github.com/twak/streetz/blob/master/examples/chicago_ce.npzEdge%20angle.png?raw=true)
+![https://github.com/twak/streetz/blob/master/examples/all.png?raw=true](https://github.com/twak/streetz/blob/master/examples/all.png?raw=true)
