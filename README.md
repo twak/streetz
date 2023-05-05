@@ -49,3 +49,4 @@ example outputs:
 
 ![cityengine streets on Chicago base; edge angle](https://github.com/twak/streetz/blob/master/examples/chicago_ce.npzEdge%20angle.png?raw=true)
 ![https://github.com/twak/streetz/blob/master/examples/all.png?raw=true](https://github.com/twak/streetz/blob/master/examples/all.png?raw=true)
+![https://github.com/twak/streetz/blob/master/examples/chicago_gt.npzVertex%20vists%20on%20random%20walks%20(n=1000).png?raw=true](https://github.com/twak/streetz/blob/master/examples/chicago_gt.npzVertex%20vists%20on%20random%20walks%20(n=1000).png?raw=true)
