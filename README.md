@@ -1,3 +1,9 @@
+Source for evaluation from the publication [https://arxiv.org/pdf/2209.00281.pdf](Large-Scale Auto-Regressive Modeling Of Street Networks).
+
+# teaser figure blender files
+
+The street geometry was generated in CityEngine. I exported DWG from python, and imported into CE with a light clean-up.
+
 # street statistics
 
 instructions:
