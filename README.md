@@ -1,19 +1,22 @@
-Source for evaluation from the publication [Large-Scale Auto-Regressive Modeling Of Street Networks](https://arxiv.org/pdf/2209.00281.pdf).
+source for evaluation from the publication [Large-Scale Auto-Regressive Modeling Of Street Networks](https://arxiv.org/pdf/2209.00281.pdf).
 
-# teaser figure blender files
+# teaser figure
 
-The street geometry was generated in CityEngine. I exported DWG from python, and imported into CE with a light clean-up.
+the street geometry was generated in CityEngine. I exported DWG from python, and imported into CE with a light clean-up.
+
+* Blender file
+* CityEngine Rules
 
 # street statistics
 
 instructions:
 
-* Create a folder in root called `npz` for your data. Number of files is limited by number colors.
-* Check the `scale_to_meters` parameter in `stats.py` will convert the npz data to meters (e.g, it should be the tile size)
-* Run `stats.py`. Runtime is about 2mins per graph. The output figure is created using `plt.show()`.
-* Edit `COLORS` in `utils.py` to adjust coloring
-* Edit the `metric_fns` array in `stats.py` at around line `229` to control which statistics are run. The graph metrics (transport ration, betweenness, & pagerank) are the slow ones.
-* Latex formatted table is written to `table.tex` in the root folder.
+* create a folder in root called `npz` for your data. Number of files is limited by number colors.
+* check the `scale_to_meters` parameter in `stats.py` will convert the npz data to meters (e.g, it should be the tile size)
+* run `stats.py`. Runtime is about 2mins per graph. The output figure is created using `plt.show()`.
+* edit `COLORS` in `utils.py` to adjust coloring
+* edit the `metric_fns` array in `stats.py` at around line `229` to control which statistics are run. The graph metrics (transport ration, betweenness, & pagerank) are the slow ones.
+* latex formatted table is written to `table.tex` in the root folder.
 * `SAMPLES` in `stats_graph.py` controls the number of shortest paths calculated for transport ratio and betweenness
 
 implementation notes:
@@ -25,13 +28,13 @@ implementation notes:
   * We don't process holes, so a loop inside another block counts as two overlapping blocks.
   * I assume the graph is planar and edges don't cross
   * The aspect ratio of a block is found by finding the smallest rectangle which covers all vertices. The aspect ratio of the rectangle's height/width is reported.
-* Rectangularness is the ratio of the true block area to the smallest rectangle. A value of 1 means all blocks are rectangular.
-* Transport ratio is calculated between two vertices and is the ratio of the shortest path length to euclidean distance. It is slow to compute the true value, so we sample random vertex pairs. Values seem to converge at around 300 iterations…but smoother graphs with higher values. Render is currently poor at this number of samples: need to increase for nice maps.
-* Random walks are between two randomly selected nodes. Evaluated stochastically
-* Betweenness-centrality measures the number of times that each vertex is visited on shortest paths between all combinations of start and end nodes. Again for speed purposes, this is sampled stochastically.
+* rectangularness is the ratio of the true block area to the smallest rectangle. A value of 1 means all blocks are rectangular.
+* transport ratio is calculated between two vertices and is the ratio of the shortest path length to euclidean distance. It is slow to compute the true value, so we sample random vertex pairs. Values seem to converge at around 300 iterations…but smoother graphs with higher values. Render is currently poor at this number of samples: need to increase for nice maps.
+* random walks are between two randomly selected nodes. Evaluated stochastically
+* betweenness-centrality measures the number of times that each vertex is visited on shortest paths between all combinations of start and end nodes. Again for speed purposes, this is sampled stochastically.
   https://networkx.org/documentation/stable/reference/algorithms/centrality.html
   * Maximum Betweenness Centrality measures the share of shortest paths which pass through the network's most important node. Again, stochastic.
-* Pagerank
+* pagerank
   * intended to measure integration of streets
   * google/lary page's algorithm. Using a higher k of 0.95. Topology only (i.e., ignoring street lengths)...so
   * ...pagerank-on-edges uses the street edges as nodes (connected to other edges at their start and end), so we can initialize them with a p proportional to their length. Looking at the graph, this just seems to prefer long edges (and penalized curves). Uses pagerank k of 0.95 to simulate longer "walks". Good at highlighting well connected regions.
