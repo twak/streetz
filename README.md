@@ -1,4 +1,4 @@
-Source for evaluation from the publication [https://arxiv.org/pdf/2209.00281.pdf](Large-Scale Auto-Regressive Modeling Of Street Networks).
+Source for evaluation from the publication [Large-Scale Auto-Regressive Modeling Of Street Networks](https://arxiv.org/pdf/2209.00281.pdf).
 
 # teaser figure blender files
 
