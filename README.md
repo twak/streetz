@@ -45,8 +45,11 @@ references:
  * https://appliednetsci.springeropen.com/track/pdf/10.1007/s41109-019-0189-1.pdf
  * transport ratio https://arxiv.org/ftp/arxiv/papers/1708/1708.00836.pdf
 
-example outputs:
+# example outputs
 
+streets by angle:
 ![cityengine streets on Chicago base; edge angle](https://github.com/twak/streetz/blob/master/examples/chicago_ce.npzEdge%20angle.png?raw=true)
-![https://github.com/twak/streetz/blob/master/examples/all.png?raw=true](https://github.com/twak/streetz/blob/master/examples/all.png?raw=true)
+vertex visits on random walks:
 ![https://github.com/twak/streetz/blob/master/examples/chicago_gt.npzVertex%20vists%20on%20random%20walks%20(n=1000).png?raw=true](https://github.com/twak/streetz/blob/master/examples/chicago_gt.npzVertex%20vists%20on%20random%20walks%20(n=1000).png?raw=true)
+graphs and tables:
+![https://github.com/twak/streetz/blob/master/examples/all.png?raw=true](https://github.com/twak/streetz/blob/master/examples/all.png?raw=true)
