@@ -4,8 +4,8 @@ source for evaluation from the publication [Large-Scale Auto-Regressive Modeling
 
 the street geometry was generated in CityEngine. I exported DWG from python, and imported into CE with a light clean-up.
 
-* Blender file
-* CityEngine Rules
+* [blender file](https://github.com/twak/streetz/tree/master/blender) - use 7 zip to reconstruct the blender file from the .7z files
+* [patched CE modern streets cga](https://github.com/twak/streetz/blob/master/blender/Complete_Street.cga) - this was hacked to show more deatail (cars etc...) near a [point of interest](https://github.com/twak/streetz/blob/master/blender/Complete_Street.cga#L51)
 
 # street statistics
 
@@ -49,7 +49,12 @@ references:
 
 streets by angle:
 ![cityengine streets on Chicago base; edge angle](https://github.com/twak/streetz/blob/master/examples/chicago_ce.npzEdge%20angle.png?raw=true)
+
 vertex visits on random walks:
 ![https://github.com/twak/streetz/blob/master/examples/chicago_gt.npzVertex%20vists%20on%20random%20walks%20(n=1000).png?raw=true](https://github.com/twak/streetz/blob/master/examples/chicago_gt.npzVertex%20vists%20on%20random%20walks%20(n=1000).png?raw=true)
+
 graphs and tables:
 ![https://github.com/twak/streetz/blob/master/examples/all.png?raw=true](https://github.com/twak/streetz/blob/master/examples/all.png?raw=true)
+
+pretty blender render:
+![https://github.com/twak/streetz/blob/master/examples/teaser_soft_sunset.png?raw=true](https://github.com/twak/streetz/blob/master/examples/teaser_soft_sunset.png?raw=true)
