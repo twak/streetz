@@ -5,7 +5,7 @@ source for evaluation from the publication [Large-Scale Auto-Regressive Modeling
 the street geometry was generated in CityEngine. I exported DWG from python, and imported into CE with a light clean-up.
 
 * [blender file](https://github.com/twak/streetz/tree/master/blender) - use 7 zip to reconstruct the blender file from the .7z files
-* [patched CE modern streets cga](https://github.com/twak/streetz/blob/master/blender/Complete_Street.cga) - this was hacked to show more deatail (cars etc...) near a [point of interest](https://github.com/twak/streetz/blob/master/blender/Complete_Street.cga#L51)
+* [patched CE modern streets cga](https://github.com/twak/streetz/blob/master/blender/Complete_Street.cga) - this was hacked to show more detail (cars etc...) near a [point of interest](https://github.com/twak/streetz/blob/master/blender/Complete_Street.cga#L51). The point of interest can be driven from the attribute layer if necessary.
 
 # street statistics
 
